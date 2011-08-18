@@ -23,12 +23,10 @@ int main(int argc,const char **argv)
 		unsigned int tcount = obj.loadObj(argv[1],false);
 		if ( tcount )
 		{
-			stanhull::HullLibrary hl;
-			stanhull::HullDesc desc(QF_TRIANGLES,obj.mVertexCount,obj.mVertices,sizeof(float)*3);
 			stanhull::HullResult result;
 			printf("Creating convex hull.\r\n");
-			stanhull::HullError err = hl.CreateConvexHull(desc,result);
-			if ( err == stanhull::QE_OK )
+			bool ok = createConvexHull(obj.mVertexCount,obj.mVertices,result);
+			if ( ok )
 			{
 				printf("Saving convex hull as 'StanHull.obj'\r\n");
 				FILE *fph = fopen("StanHull.obj","wb");
@@ -48,7 +46,7 @@ int main(int argc,const char **argv)
 					}
 					fclose(fph);
 				}
-				hl.ReleaseResult(result);
+				releaseHullResult(result);
 			}
 			else
 			{
