@@ -30,12 +30,9 @@
 #include <math.h>
 #include <float.h>
 #include <assert.h>
-#include <stdarg.h>
-#include <setjmp.h>
+
 
 #include "StanHull.h"
-
-
 
 namespace stanhull
 {
@@ -274,11 +271,11 @@ template <class Type> PxI32 StanArray<Type>::IndexOf(Type t)
 
 
 
-PxI32    argmin(PxF32 a[],PxI32 n);
-PxF32  sqr(PxF32 a); 
-PxF32  clampf(PxF32 a) ;
-PxF32  Round(PxF32 a,PxF32 precision);
-PxF32  Interpolate(const PxF32 &f0,const PxF32 &f1,PxF32 alpha) ;
+//static PxI32    argmin(PxF32 a[],PxI32 n);
+static PxF32  sqr(PxF32 a); 
+//static PxF32  clampf(PxF32 a) ;
+//static PxF32  Round(PxF32 a,PxF32 precision);
+//static PxF32  Interpolate(const PxF32 &f0,const PxF32 &f1,PxF32 alpha) ;
 
 template <class T>
 void Swap(T &a,T &b) 
@@ -315,20 +312,6 @@ public:
 };
 
 
-//-------- 2D --------
-
-class float2  : public UserAllocated
-{
-public:
-	PxF32 x,y;
-	float2(){x=0;y=0;};
-	float2(PxF32 _x,PxF32 _y){x=_x;y=_y;}
-	PxF32& operator[](PxI32 i) {PX_ASSERT(i>=0&&i<2);return ((PxF32*)this)[i];}
-	const PxF32& operator[](PxI32 i) const {PX_ASSERT(i>=0&&i<2);return ((PxF32*)this)[i];}
-};
-inline float2 operator-( const float2& a, const float2& b ){return float2(a.x-b.x,a.y-b.y);}
-inline float2 operator+( const float2& a, const float2& b ){return float2(a.x+b.x,a.y+b.y);}
-
 //--------- 3D ---------
 
 class float3  : public UserAllocated // 3D
@@ -343,31 +326,22 @@ class float3  : public UserAllocated // 3D
 };
 
 
-float3& operator+=( float3 &a, const float3& b );
-float3& operator-=( float3 &a ,const float3& b );
-float3& operator*=( float3 &v ,const PxF32 s );
-float3& operator/=( float3 &v, const PxF32 s );
+static float3& operator+=( float3 &a, const float3& b );
+static float3& operator-=( float3 &a ,const float3& b );
 
-PxF32  magnitude( const float3& v );
-float3 normalize( const float3& v );
-float3 safenormalize(const float3 &v);
-float3 vabs(const float3 &v);
-float3 operator+( const float3& a, const float3& b );
-float3 operator-( const float3& a, const float3& b );
-float3 operator-( const float3& v );
-float3 operator*( const float3& v, const PxF32 s );
-float3 operator*( const PxF32 s, const float3& v );
-float3 operator/( const float3& v, const PxF32 s );
-inline PxI32 operator==( const float3 &a, const float3 &b ) { return (a.x==b.x && a.y==b.y && a.z==b.z); }
-inline PxI32 operator!=( const float3 &a, const float3 &b ) { return (a.x!=b.x || a.y!=b.y || a.z!=b.z); }
-// due to ambiguity and inconsistent standards ther are no overloaded operators for mult such as va*vb.
-PxF32  dot( const float3& a, const float3& b );
-float3 cmul( const float3 &a, const float3 &b);
-float3 cross( const float3& a, const float3& b );
-float3 Interpolate(const float3 &v0,const float3 &v1,PxF32 alpha);
-float3 Round(const float3& a,PxF32 precision);
-float3	VectorMax(const float3 &a, const float3 &b);
-float3	VectorMin(const float3 &a, const float3 &b);
+static PxF32  magnitude( const float3& v );
+static float3 normalize( const float3& v );
+static float3 operator+( const float3& a, const float3& b );
+static float3 operator-( const float3& a, const float3& b );
+static float3 operator-( const float3& v );
+static float3 operator*( const float3& v, const PxF32 s );
+static float3 operator/( const float3& v, const PxF32 s );
+static inline PxI32 operator==( const float3 &a, const float3 &b ) { return (a.x==b.x && a.y==b.y && a.z==b.z); }
+static inline PxI32 operator!=( const float3 &a, const float3 &b ) { return (a.x!=b.x || a.y!=b.y || a.z!=b.z); }
+static PxF32  dot( const float3& a, const float3& b );
+static float3 cross( const float3& a, const float3& b );
+static float3	VectorMax(const float3 &a, const float3 &b);
+static float3	VectorMin(const float3 &a, const float3 &b);
 
 
 
@@ -383,121 +357,11 @@ class float3x3  : public UserAllocated
 	PxF32&        operator()(PxI32 r, PxI32 c)       {PX_ASSERT(r>=0&&r<3&&c>=0&&c<3);return ((&x)[r])[c];}
 	const PxF32&  operator()(PxI32 r, PxI32 c) const {PX_ASSERT(r>=0&&r<3&&c>=0&&c<3);return ((&x)[r])[c];}
 }; 
-float3x3 Transpose( const float3x3& m );
-float3   operator*( const float3& v  , const float3x3& m  );
-float3   operator*( const float3x3& m , const float3& v   );
-float3x3 operator*( const float3x3& m , const PxF32& s   );
-float3x3 operator*( const float3x3& ma, const float3x3& mb );
-float3x3 operator/( const float3x3& a, const PxF32& s ) ;
-float3x3 operator+( const float3x3& a, const float3x3& b );
-float3x3 operator-( const float3x3& a, const float3x3& b );
-float3x3 &operator+=( float3x3& a, const float3x3& b );
-float3x3 &operator-=( float3x3& a, const float3x3& b );
-float3x3 &operator*=( float3x3& a, const PxF32& s );
-PxF32    Determinant(const float3x3& m );
-float3x3 Inverse(const float3x3& a);  // its just 3x3 so we simply do that cofactor method
 
-
-//-------- 4D Math --------
-
-class float4  : public UserAllocated
-{
-public:
-	PxF32 x,y,z,w;
-	float4(){x=0;y=0;z=0;w=0;};
-	float4(PxF32 _x,PxF32 _y,PxF32 _z,PxF32 _w){x=_x;y=_y;z=_z;w=_w;}
-	float4(const float3 &v,PxF32 _w){x=v.x;y=v.y;z=v.z;w=_w;}
-	//operator PxF32 *() { return &x;};
-	PxF32& operator[](PxI32 i) {PX_ASSERT(i>=0&&i<4);return ((PxF32*)this)[i];}
-	const PxF32& operator[](PxI32 i) const {PX_ASSERT(i>=0&&i<4);return ((PxF32*)this)[i];}
-	const float3& xyz() const { return *((float3*)this);}
-	float3&       xyz()       { return *((float3*)this);}
-};
-
-
-struct D3DXMATRIX; 
-
-class float4x4  : public UserAllocated
-{
-	public:
-	float4 x,y,z,w;  // the 4 rows
-	float4x4(){}
-	float4x4(const float4 &_x, const float4 &_y, const float4 &_z, const float4 &_w):x(_x),y(_y),z(_z),w(_w){}
-	float4x4(PxF32 m00, PxF32 m01, PxF32 m02, PxF32 m03, 
-						PxF32 m10, PxF32 m11, PxF32 m12, PxF32 m13, 
-				PxF32 m20, PxF32 m21, PxF32 m22, PxF32 m23, 
-				PxF32 m30, PxF32 m31, PxF32 m32, PxF32 m33 )
-			:x(m00,m01,m02,m03),y(m10,m11,m12,m13),z(m20,m21,m22,m23),w(m30,m31,m32,m33){}
-	PxF32&       operator()(PxI32 r, PxI32 c)       {PX_ASSERT(r>=0&&r<4&&c>=0&&c<4);return ((&x)[r])[c];}
-	const PxF32& operator()(PxI32 r, PxI32 c) const {PX_ASSERT(r>=0&&r<4&&c>=0&&c<4);return ((&x)[r])[c];}
-		operator       PxF32* ()       {return &x.x;}
-		operator const PxF32* () const {return &x.x;}
-	operator       struct D3DXMATRIX* ()       { return (struct D3DXMATRIX*) this;}
-	operator const struct D3DXMATRIX* () const { return (struct D3DXMATRIX*) this;}
-};
-
-
-PxI32     operator==( const float4 &a, const float4 &b );
-float4 Homogenize(const float3 &v3,const PxF32 &w=1.0f); // Turns a 3D float3 4D vector4 by appending w
-float4 cmul( const float4 &a, const float4 &b);
-float4 operator*( const float4 &v, PxF32 s);
-float4 operator*( PxF32 s, const float4 &v);
-float4 operator+( const float4 &a, const float4 &b);
-float4 operator-( const float4 &a, const float4 &b);
-float4x4 operator*( const float4x4& a, const float4x4& b );
-float4 operator*( const float4& v, const float4x4& m );
-float4x4 Inverse(const float4x4 &m);
-float4x4 MatrixRigidInverse(const float4x4 &m);
-float4x4 MatrixTranspose(const float4x4 &m);
-float4x4 MatrixPerspectiveFov(PxF32 fovy, PxF32 Aspect, PxF32 zn, PxF32 zf );
-float4x4 MatrixTranslation(const float3 &t);
-float4x4 MatrixRotationZ(const PxF32 angle_radians);
-float4x4 MatrixLookAt(const float3& eye, const float3& at, const float3& up);
-PxI32     operator==( const float4x4 &a, const float4x4 &b );
-
-
-//-------- Quaternion ------------
-
-class Quaternion :public float4
-{
- public:
-	Quaternion() { x = y = z = 0.0f; w = 1.0f; }
-	Quaternion( float3 v, PxF32 t ) { v = normalize(v); w = cosf(t/2.0f); v = v*sinf(t/2.0f); x = v.x; y = v.y; z = v.z; }
-	Quaternion(PxF32 _x, PxF32 _y, PxF32 _z, PxF32 _w){x=_x;y=_y;z=_z;w=_w;}
-	PxF32 angle() const { return acosf(w)*2.0f; }
-	float3 axis() const { float3 a(x,y,z); if(fabsf(angle())<0.0000001f) return float3(1,0,0); return a*(1/sinf(angle()/2.0f)); }
-	float3 xdir() const { return float3( 1-2*(y*y+z*z),  2*(x*y+w*z),  2*(x*z-w*y) ); }
-	float3 ydir() const { return float3(   2*(x*y-w*z),1-2*(x*x+z*z),  2*(y*z+w*x) ); }
-	float3 zdir() const { return float3(   2*(x*z+w*y),  2*(y*z-w*x),1-2*(x*x+y*y) ); }
-	float3x3 getmatrix() const { return float3x3( xdir(), ydir(), zdir() ); }
-	operator float3x3() { return getmatrix(); }
-	void Normalize();
-};
-
-Quaternion& operator*=(Quaternion& a, PxF32 s );
-Quaternion	operator*( const Quaternion& a, PxF32 s );
-Quaternion	operator*( const Quaternion& a, const Quaternion& b);
-Quaternion	operator+( const Quaternion& a, const Quaternion& b );
-Quaternion	normalize( Quaternion a );
-PxF32		dot( const Quaternion &a, const Quaternion &b );
-float3		operator*( const Quaternion& q, const float3& v );
-float3		operator*( const float3& v, const Quaternion& q );
-Quaternion	slerp( Quaternion a, const Quaternion& b, PxF32 interp );
-Quaternion  Interpolate(const Quaternion &q0,const Quaternion &q1,PxF32 alpha); 
-Quaternion  RotationArc(float3 v0, float3 v1 );  // returns quat q where q*v0=v1
-Quaternion  Inverse(const Quaternion &q);
-float4x4     MatrixFromQuatVec(const Quaternion &q, const float3 &v);
-
-
-//------ Euler Angle -----
-
-Quaternion YawPitchRoll( PxF32 yaw, PxF32 pitch, PxF32 roll );
-PxF32 Yaw( const Quaternion& q );
-PxF32 Pitch( const Quaternion& q );
-PxF32 Roll( Quaternion q );
-PxF32 Yaw( const float3& v );
-PxF32 Pitch( const float3& v );
-
+static float3x3 Transpose( const float3x3& m );
+static float3   operator*( const float3& v  , const float3x3& m  );
+static PxF32    Determinant(const float3x3& m );
+static float3x3 Inverse(const float3x3& a);  // its just 3x3 so we simply do that cofactor method
 
 //------- Plane ----------
 
@@ -508,30 +372,19 @@ class Plane
 	PxF32	dist;   // distance below origin - the D from plane equasion Ax+By+Cz+D=0
 			Plane(const float3 &n,PxF32 d):normal(n),dist(d){}
 			Plane():normal(),dist(0){}
-	void	Transform(const float3 &position, const Quaternion &orientation);
 };
 
-inline Plane PlaneFlip(const Plane &plane){return Plane(-plane.normal,-plane.dist);}
-inline PxI32 operator==( const Plane &a, const Plane &b ) { return (a.normal==b.normal && a.dist==b.dist); }
-inline PxI32 coplanar( const Plane &a, const Plane &b ) { return (a==b || a==PlaneFlip(b)); }
+static inline Plane PlaneFlip(const Plane &plane){return Plane(-plane.normal,-plane.dist);}
+static inline PxI32 operator==( const Plane &a, const Plane &b ) { return (a.normal==b.normal && a.dist==b.dist); }
+static inline PxI32 coplanar( const Plane &a, const Plane &b ) { return (a==b || a==PlaneFlip(b)); }
 
 
 //--------- Utility Functions ------
 
-float3  PlaneLineIntersection(const Plane &plane, const float3 &p0, const float3 &p1);
-float3  PlaneProject(const Plane &plane, const float3 &point);
-float3  LineProject(const float3 &p0, const float3 &p1, const float3 &a);  // projects a onto infinite line p0p1
-PxF32   LineProjectTime(const float3 &p0, const float3 &p1, const float3 &a);
-float3  ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2);
-PxI32     PolyHit(const float3 *vert,const PxI32 n,const float3 &v0, const float3 &v1, float3 *impact=NULL, float3 *normal=NULL);
-PxI32     BoxInside(const float3 &p,const float3 &bmin, const float3 &bmax) ;
-PxI32     BoxIntersect(const float3 &v0, const float3 &v1, const float3 &bmin, const float3 &bmax, float3 *impact);
-PxF32   DistanceBetweenLines(const float3 &ustart, const float3 &udir, const float3 &vstart, const float3 &vdir, float3 *upoint=NULL, float3 *vpoint=NULL);
-float3  TriNormal(const float3 &v0, const float3 &v1, const float3 &v2);
-float3  NormalOf(const float3 *vert, const PxI32 n);
-Quaternion VirtualTrackBall(const float3 &cop, const float3 &cor, const float3 &dir0, const float3 &dir1);
-
-
+static float3  PlaneLineIntersection(const Plane &plane, const float3 &p0, const float3 &p1);
+static float3  ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2);
+static float3  TriNormal(const float3 &v0, const float3 &v1, const float3 &v2);
+static float3  NormalOf(const float3 *vert, const PxI32 n);
 
 
 //*****************************************************
@@ -539,98 +392,55 @@ Quaternion VirtualTrackBall(const float3 &cop, const float3 &cor, const float3 &
 //*****************************************************
 
 
-PxF32   sqr(PxF32 a) {return a*a;}
-PxF32   clampf(PxF32 a) {return Min(1.0f,Max(0.0f,a));}
-
-
-PxF32 Round(PxF32 a,PxF32 precision)
-{
-	return floorf(0.5f+a/precision)*precision;
-}
-
-
-PxF32 Interpolate(const PxF32 &f0,const PxF32 &f1,PxF32 alpha) 
-{
-	return f0*(1-alpha) + f1*alpha;
-}
-
-
-PxI32     argmin(PxF32 a[],PxI32 n)
-{
-	PxI32 r=0;
-	for(PxI32 i=1;i<n;i++) 
-		{
-		if(a[i]<a[r]) 
-				{
-			r = i;			
-		}
-	}
-	return r;
-}
-
+static PxF32   sqr(PxF32 a) {return a*a;}
 
 
 //------------ float3 (3D) --------------
 
 
 
-float3 operator+( const float3& a, const float3& b ) 
+static float3 operator+( const float3& a, const float3& b ) 
 {
 	return float3(a.x+b.x, a.y+b.y, a.z+b.z); 
 }
 
 
-float3 operator-( const float3& a, const float3& b )
+static float3 operator-( const float3& a, const float3& b )
 {
 	return float3( a.x-b.x, a.y-b.y, a.z-b.z ); 
 }
 
 
-float3 operator-( const float3& v )                     
+static float3 operator-( const float3& v )                     
 {
 	return float3( -v.x, -v.y, -v.z ); 
 }
 
 
-float3 operator*( const float3& v, PxF32 s )      
+static float3 operator*( const float3& v, PxF32 s )      
 {
 	return float3( v.x*s, v.y*s, v.z*s ); 
 }
 
 
-float3 operator*( PxF32 s, const float3& v )      
-{
-	return float3( v.x*s, v.y*s, v.z*s ); 
-}
-
-
-float3 operator/( const float3& v, PxF32 s )
+static float3 operator/( const float3& v, PxF32 s )
 { 
 	return v*(1.0f/s); 
 }
 
-PxF32  dot( const float3& a, const float3& b )    
+static PxF32  dot( const float3& a, const float3& b )    
 {
 	return a.x*b.x + a.y*b.y + a.z*b.z; 
 }
 
-float3 cmul( const float3 &v1, const float3 &v2) 
-{ 
-	return float3(v1.x*v2.x, v1.y*v2.y, v1.z*v2.z); 
-}
-
-
-float3 cross( const float3& a, const float3& b )
+static float3 cross( const float3& a, const float3& b )
 {
 		return float3( a.y*b.z - a.z*b.y,
 									 a.z*b.x - a.x*b.z,
 									 a.x*b.y - a.y*b.x );
 }
 
-
-
-
-float3& operator+=( float3& a , const float3& b )
+static float3& operator+=( float3& a , const float3& b )
 {
 		a.x += b.x;
 		a.y += b.y;
@@ -639,7 +449,7 @@ float3& operator+=( float3& a , const float3& b )
 }
 
 
-float3& operator-=( float3& a , const float3& b )
+static float3& operator-=( float3& a , const float3& b )
 {
 		a.x -= b.x;
 		a.y -= b.y;
@@ -648,44 +458,17 @@ float3& operator-=( float3& a , const float3& b )
 }
 
 
-float3& operator*=(float3& v , PxF32 s )
-{
-		v.x *= s;
-		v.y *= s;
-		v.z *= s;
-		return v;
-}
-
-
-float3& operator/=(float3& v , PxF32 s )
-{
-		PxF32 sinv = 1.0f / s;
-		v.x *= sinv;
-		v.y *= sinv;
-		v.z *= sinv;
-		return v;
-}
-
-float3 vabs(const float3 &v)
-{
-	return float3(fabsf(v.x),fabsf(v.y),fabsf(v.z));
-}
-
-
-PxF32 magnitude( const float3& v )
+static PxF32 magnitude( const float3& v )
 {
 		return sqrtf(sqr(v.x) + sqr( v.y)+ sqr(v.z));
 }
 
-
-
-float3 normalize( const float3 &v )
+static float3 normalize( const float3 &v )
 {
 	// this routine, normalize, is ok, provided magnitude works!!
 		PxF32 d=magnitude(v);
 		if (d==0) 
 		{
-		printf("Cant normalize ZERO vector\n");
 		PX_ALWAYS_ASSERT();// yes this could go here
 		d=0.1f;
 	}
@@ -693,54 +476,25 @@ float3 normalize( const float3 &v )
 	return float3(v.x*d,v.y*d,v.z*d);
 }
 
-float3 safenormalize(const float3 &v)
-{
-	if(magnitude(v)<=0.0f)
-	{
-		return float3(1,0,0);
-	}
-	return normalize(v);
-}
 
-float3 Round(const float3 &a,PxF32 precision)
-{
-	return float3(Round(a.x,precision),Round(a.y,precision),Round(a.z,precision));
-}
-
-
-float3 Interpolate(const float3 &v0,const float3 &v1,PxF32 alpha) 
-{
-	return v0*(1-alpha) + v1*alpha;
-}
-
-float3 VectorMin(const float3 &a,const float3 &b)
+static float3 VectorMin(const float3 &a,const float3 &b)
 {
 	return float3(Min(a.x,b.x),Min(a.y,b.y),Min(a.z,b.z));
 }
-float3 VectorMax(const float3 &a,const float3 &b)
+
+static float3 VectorMax(const float3 &a,const float3 &b)
 {
 	return float3(Max(a.x,b.x),Max(a.y,b.y),Max(a.z,b.z));
 }
 
-// the statement v1*v2 is ambiguous since there are 3 types
-// of vector multiplication
-//  - componantwise (for example combining colors)
-//  - dot product
-//  - cross product
-// Therefore we never declare/implement this function.
-// So we will never see:  float3 operator*(float3 a,float3 b) 
-
-
-
-
 //------------ float3x3 ---------------
-PxF32 Determinant(const float3x3 &m)
+static PxF32 Determinant(const float3x3 &m)
 {
 	return  m.x.x*m.y.y*m.z.z + m.y.x*m.z.y*m.x.z + m.z.x*m.x.y*m.y.z 
 			 -m.x.x*m.z.y*m.y.z - m.y.x*m.x.y*m.z.z - m.z.x*m.y.y*m.x.z ;
 }
 
-float3x3 Inverse(const float3x3 &a)
+static float3x3 Inverse(const float3x3 &a)
 {
 	float3x3 b;
 	PxF32 d=Determinant(a);
@@ -762,7 +516,7 @@ float3x3 Inverse(const float3x3 &a)
 }
 
 
-float3x3 Transpose( const float3x3& m )
+static float3x3 Transpose( const float3x3& m )
 {
 	return float3x3( float3(m.x.x,m.y.x,m.z.x),
 					float3(m.x.y,m.y.y,m.z.y),
@@ -770,63 +524,13 @@ float3x3 Transpose( const float3x3& m )
 }
 
 
-float3 operator*(const float3& v , const float3x3 &m ) {
+static float3 operator*(const float3& v , const float3x3 &m ) {
 	return float3((m.x.x*v.x + m.y.x*v.y + m.z.x*v.z), 
 					(m.x.y*v.x + m.y.y*v.y + m.z.y*v.z), 
 					(m.x.z*v.x + m.y.z*v.y + m.z.z*v.z));
 }
-float3 operator*(const float3x3 &m,const float3& v  ) { 
-	return float3(dot(m.x,v),dot(m.y,v),dot(m.z,v));
-}
 
-
-float3x3 operator*( const float3x3& a, const float3x3& b )  
-{ 
-	return float3x3(a.x*b,a.y*b,a.z*b);
-}
-
-float3x3 operator*( const float3x3& a, const PxF32& s )  
-{ 
-	return float3x3(a.x*s, a.y*s ,a.z*s); 
-}
-float3x3 operator/( const float3x3& a, const PxF32& s )  
-{ 
-	PxF32 t=1/s;
-	return float3x3(a.x*t, a.y*t ,a.z*t); 
-}
-float3x3 operator+( const float3x3& a, const float3x3& b )
-{
-	return float3x3(a.x+b.x, a.y+b.y, a.z+b.z);
-}
-float3x3 operator-( const float3x3& a, const float3x3& b )
-{
-	return float3x3(a.x-b.x, a.y-b.y, a.z-b.z);
-}
-float3x3 &operator+=( float3x3& a, const float3x3& b )
-{
-	a.x+=b.x;
-	a.y+=b.y;
-	a.z+=b.z;
-	return a;
-}
-float3x3 &operator-=( float3x3& a, const float3x3& b )
-{
-	a.x-=b.x;
-	a.y-=b.y;
-	a.z-=b.z;
-	return a;
-}
-float3x3 &operator*=( float3x3& a, const PxF32& s )
-{
-	a.x*=s;
-	a.y*=s;
-	a.z*=s;
-	return a;
-}
-
-
-
-float3 ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2){
+static float3 ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2){
 	float3x3 mp =Transpose(float3x3(p0.normal,p1.normal,p2.normal));
 	float3x3 mi = Inverse(mp);
 	float3 b(p0.dist,p1.dist,p2.dist);
@@ -834,485 +538,7 @@ float3 ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2){
 }
 
 
-//--------------- 4D ----------------
-
-float4   operator*( const float4&   v, const float4x4& m )
-{
-	return v.x*m.x + v.y*m.y + v.z*m.z + v.w*m.w; // yes this actually works
-}
-
-PxI32 operator==( const float4 &a, const float4 &b ) 
-{
-	return (a.x==b.x && a.y==b.y && a.z==b.z && a.w==b.w);
-}
-
-
-//  Dont implement m*v for now, since that might confuse us
-//  All our transforms are based on multiplying the "row" vector on the left
-//float4   operator*(const float4x4& m , const float4&   v )
-//{
-//	return float4(dot(v,m.x),dot(v,m.y),dot(v,m.z),dot(v,m.w));
-//}
-
-
-
-float4 cmul( const float4 &a, const float4 &b) 
-{
-	return float4(a.x*b.x,a.y*b.y,a.z*b.z,a.w*b.w);
-}
-
-
-float4 operator*( const float4 &v, PxF32 s) 
-{
-	return float4(v.x*s,v.y*s,v.z*s,v.w*s);
-}
-
-
-float4 operator*( PxF32 s, const float4 &v) 
-{
-	return float4(v.x*s,v.y*s,v.z*s,v.w*s);
-}
-
-
-float4 operator+( const float4 &a, const float4 &b) 
-{
-	return float4(a.x+b.x,a.y+b.y,a.z+b.z,a.w+b.w);
-}
-
-
-
-float4 operator-( const float4 &a, const float4 &b) 
-{
-	return float4(a.x-b.x,a.y-b.y,a.z-b.z,a.w-b.w);
-}
-
-
-float4 Homogenize(const float3 &v3,const PxF32 &w)
-{
-	return float4(v3.x,v3.y,v3.z,w);
-}
-
-
-
-float4x4 operator*( const float4x4& a, const float4x4& b )
-{
-	return float4x4(a.x*b,a.y*b,a.z*b,a.w*b);
-}
-
-float4x4 MatrixTranspose(const float4x4 &m)
-{
-	return float4x4(
-		m.x.x, m.y.x, m.z.x, m.w.x,
-		m.x.y, m.y.y, m.z.y, m.w.y,
-		m.x.z, m.y.z, m.z.z, m.w.z,
-		m.x.w, m.y.w, m.z.w, m.w.w );
-}
-
-float4x4 MatrixRigidInverse(const float4x4 &m)
-{
-	float4x4 trans_inverse = MatrixTranslation(-m.w.xyz());
-	float4x4 rot   = m;
-	rot.w = float4(0,0,0,1);
-	return trans_inverse * MatrixTranspose(rot);
-}
-
-
-float4x4 MatrixPerspectiveFov(PxF32 fovy, PxF32 aspect, PxF32 zn, PxF32 zf )
-{
-	PxF32 h = 1.0f/tanf(fovy/2.0f); // view space height
-	PxF32 w = h / aspect ;  // view space width
-	return float4x4(
-		w, 0, 0             ,   0,
-		0, h, 0             ,   0,
-		0, 0, zf/(zn-zf)    ,  -1,
-		0, 0, zn*zf/(zn-zf) ,   0 );
-}
-
-
-
-float4x4 MatrixLookAt(const float3& eye, const float3& at, const float3& up)
-{
-	float4x4 m;
-	m.w.w = 1.0f;
-	m.w.xyz() = eye;
-	m.z.xyz() = normalize(eye-at);
-	m.x.xyz() = normalize(cross(up,m.z.xyz()));
-	m.y.xyz() = cross(m.z.xyz(),m.x.xyz());
-	return MatrixRigidInverse(m);
-}
-
-
-float4x4 MatrixTranslation(const float3 &t)
-{
-	return float4x4(
-		1,  0,  0,  0,
-		0,  1,  0,  0,
-		0,  0,  1,  0,
-		t.x,t.y,t.z,1 );
-}
-
-
-float4x4 MatrixRotationZ(const PxF32 angle_radians)
-{
-	PxF32 s =  sinf(angle_radians);
-	PxF32 c =  cosf(angle_radians);
-	return float4x4(
-		c,  s,  0,  0,
-		-s, c,  0,  0,
-		0,  0,  1,  0,
-		0,  0,  0,  1 );
-}
-
-
-
-PxI32 operator==( const float4x4 &a, const float4x4 &b )
-{
-	return (a.x==b.x && a.y==b.y && a.z==b.z && a.w==b.w);
-}
-
-
-float4x4 Inverse(const float4x4 &m)
-{
-	float4x4 d;
-	PxF32 *dst = &d.x.x;
-	PxF32 tmp[12]; /* temp array for pairs */
-	PxF32 src[16]; /* array of transpose source matrix */
-	PxF32 det; /* determinant */
-	/* transpose matrix */
-	for ( PxI32 i = 0; i < 4; i++) {
-		src[i] = m(i,0) ;
-		src[i + 4] = m(i,1);
-		src[i + 8] = m(i,2);
-		src[i + 12] = m(i,3); 
-	}
-	/* calculate pairs for first 8 elements (cofactors) */
-	tmp[0]  = src[10] * src[15];
-	tmp[1]  = src[11] * src[14];
-	tmp[2]  = src[9] * src[15];
-	tmp[3]  = src[11] * src[13];
-	tmp[4]  = src[9] * src[14];
-	tmp[5]  = src[10] * src[13];
-	tmp[6]  = src[8] * src[15];
-	tmp[7]  = src[11] * src[12];
-	tmp[8]  = src[8] * src[14];
-	tmp[9]  = src[10] * src[12];
-	tmp[10] = src[8] * src[13];
-	tmp[11] = src[9] * src[12];
-	/* calculate first 8 elements (cofactors) */
-	dst[0]  = tmp[0]*src[5] + tmp[3]*src[6] + tmp[4]*src[7];
-	dst[0] -= tmp[1]*src[5] + tmp[2]*src[6] + tmp[5]*src[7];
-	dst[1]  = tmp[1]*src[4] + tmp[6]*src[6] + tmp[9]*src[7];
-	dst[1] -= tmp[0]*src[4] + tmp[7]*src[6] + tmp[8]*src[7];
-	dst[2]  = tmp[2]*src[4] + tmp[7]*src[5] + tmp[10]*src[7];
-	dst[2] -= tmp[3]*src[4] + tmp[6]*src[5] + tmp[11]*src[7];
-	dst[3]  = tmp[5]*src[4] + tmp[8]*src[5] + tmp[11]*src[6];
-	dst[3] -= tmp[4]*src[4] + tmp[9]*src[5] + tmp[10]*src[6];
-	dst[4]  = tmp[1]*src[1] + tmp[2]*src[2] + tmp[5]*src[3];
-	dst[4] -= tmp[0]*src[1] + tmp[3]*src[2] + tmp[4]*src[3];
-	dst[5]  = tmp[0]*src[0] + tmp[7]*src[2] + tmp[8]*src[3];
-	dst[5] -= tmp[1]*src[0] + tmp[6]*src[2] + tmp[9]*src[3];
-	dst[6]  = tmp[3]*src[0] + tmp[6]*src[1] + tmp[11]*src[3];
-	dst[6] -= tmp[2]*src[0] + tmp[7]*src[1] + tmp[10]*src[3];
-	dst[7]  = tmp[4]*src[0] + tmp[9]*src[1] + tmp[10]*src[2];
-	dst[7] -= tmp[5]*src[0] + tmp[8]*src[1] + tmp[11]*src[2];
-	/* calculate pairs for second 8 elements (cofactors) */
-	tmp[0]  = src[2]*src[7];
-	tmp[1]  = src[3]*src[6];
-	tmp[2]  = src[1]*src[7];
-	tmp[3]  = src[3]*src[5];
-	tmp[4]  = src[1]*src[6];
-	tmp[5]  = src[2]*src[5];
-	tmp[6]  = src[0]*src[7];
-	tmp[7]  = src[3]*src[4];
-	tmp[8]  = src[0]*src[6];
-	tmp[9]  = src[2]*src[4];
-	tmp[10] = src[0]*src[5];
-	tmp[11] = src[1]*src[4];
-	/* calculate second 8 elements (cofactors) */
-	dst[8]  = tmp[0]*src[13] + tmp[3]*src[14] + tmp[4]*src[15];
-	dst[8] -= tmp[1]*src[13] + tmp[2]*src[14] + tmp[5]*src[15];
-	dst[9]  = tmp[1]*src[12] + tmp[6]*src[14] + tmp[9]*src[15];
-	dst[9] -= tmp[0]*src[12] + tmp[7]*src[14] + tmp[8]*src[15];
-	dst[10] = tmp[2]*src[12] + tmp[7]*src[13] + tmp[10]*src[15];
-	dst[10]-= tmp[3]*src[12] + tmp[6]*src[13] + tmp[11]*src[15];
-	dst[11] = tmp[5]*src[12] + tmp[8]*src[13] + tmp[11]*src[14];
-	dst[11]-= tmp[4]*src[12] + tmp[9]*src[13] + tmp[10]*src[14];
-	dst[12] = tmp[2]*src[10] + tmp[5]*src[11] + tmp[1]*src[9];
-	dst[12]-= tmp[4]*src[11] + tmp[0]*src[9] + tmp[3]*src[10];
-	dst[13] = tmp[8]*src[11] + tmp[0]*src[8] + tmp[7]*src[10];
-	dst[13]-= tmp[6]*src[10] + tmp[9]*src[11] + tmp[1]*src[8];
-	dst[14] = tmp[6]*src[9] + tmp[11]*src[11] + tmp[3]*src[8];
-	dst[14]-= tmp[10]*src[11] + tmp[2]*src[8] + tmp[7]*src[9];
-	dst[15] = tmp[10]*src[10] + tmp[4]*src[8] + tmp[9]*src[9];
-	dst[15]-= tmp[8]*src[9] + tmp[11]*src[10] + tmp[5]*src[8];
-	/* calculate determinant */
-	det=src[0]*dst[0]+src[1]*dst[1]+src[2]*dst[2]+src[3]*dst[3];
-	/* calculate matrix inverse */
-	det = 1/det;
-	for ( PxI32 j = 0; j < 16; j++)
-	dst[j] *= det;
-	return d;
-}
-
-
-//--------- Quaternion --------------
-	
-Quaternion operator*( const Quaternion& a, const Quaternion& b )
-{
-	Quaternion c;
-	c.w = a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z; 
-	c.x = a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y; 
-	c.y = a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x; 
-	c.z = a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w; 
-	return c;
-}
-
-
-Quaternion operator*( const Quaternion& a, PxF32 b )
-{
-	return Quaternion(a.x*b, a.y*b, a.z*b ,a.w*b);
-}
-
-Quaternion  Inverse(const Quaternion &q)
-{
-	return Quaternion(-q.x,-q.y,-q.z,q.w);
-}
-
-Quaternion& operator*=( Quaternion& q, const PxF32 s )
-{
-		q.x *= s;
-		q.y *= s;
-		q.z *= s;
-		q.w *= s;
-		return q;
-}
-void Quaternion::Normalize()
-{
-	PxF32 m = sqrtf(sqr(w)+sqr(x)+sqr(y)+sqr(z));
-	if(m<0.000000001f) {
-		w=1.0f;
-		x=y=z=0.0f;
-		return;
-	}
-	(*this) *= (1.0f/m);
-}
-
-float3 operator*( const Quaternion& q, const float3& v )
-{
-	// The following is equivalent to:   
-	//return (q.getmatrix() * v);  
-	PxF32 qx2 = q.x*q.x;
-	PxF32 qy2 = q.y*q.y;
-	PxF32 qz2 = q.z*q.z;
-
-	PxF32 qxqy = q.x*q.y;
-	PxF32 qxqz = q.x*q.z;
-	PxF32 qxqw = q.x*q.w;
-	PxF32 qyqz = q.y*q.z;
-	PxF32 qyqw = q.y*q.w;
-	PxF32 qzqw = q.z*q.w;
-	return float3(
-		(1-2*(qy2+qz2))*v.x + (2*(qxqy-qzqw))*v.y + (2*(qxqz+qyqw))*v.z ,
-		(2*(qxqy+qzqw))*v.x + (1-2*(qx2+qz2))*v.y + (2*(qyqz-qxqw))*v.z ,
-		(2*(qxqz-qyqw))*v.x + (2*(qyqz+qxqw))*v.y + (1-2*(qx2+qy2))*v.z  );
-}
-
-Quaternion operator+( const Quaternion& a, const Quaternion& b )
-{
-	return Quaternion(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
-}
-
-PxF32 dot( const Quaternion &a,const Quaternion &b )
-{
-	return  (a.w*b.w + a.x*b.x + a.y*b.y + a.z*b.z); 
-}
-
-Quaternion normalize( Quaternion a )
-{
-	PxF32 m = sqrtf(sqr(a.w)+sqr(a.x)+sqr(a.y)+sqr(a.z));
-	if(m<0.000000001) 
-		{    
-		a.w=1;
-		a.x=a.y=a.z=0;
-		return a;
-	}
-	return a * (1/m);
-}
-
-Quaternion slerp( Quaternion a, const Quaternion& b, PxF32 interp )
-{
-	if(dot(a,b) <0.0) 
-		{
-		a.w=-a.w;
-		a.x=-a.x;
-		a.y=-a.y;
-		a.z=-a.z;
-	}
-	PxF32 d = dot(a,b);
-	if(d>=1.0) {
-		return a;
-	}
-	PxF32 theta = acosf(d);
-	if(theta==0.0f) { return(a);}
-	return a*(sinf(theta-interp*theta)/sinf(theta)) + b*(sinf(interp*theta)/sinf(theta));
-}
-
-
-Quaternion Interpolate(const Quaternion &q0,const Quaternion &q1,PxF32 alpha) {
-	return slerp(q0,q1,alpha);
-}
-
-
-Quaternion YawPitchRoll( PxF32 yaw, PxF32 pitch, PxF32 roll ) 
-{
-	roll  *= DEG2RAD;
-	yaw   *= DEG2RAD;
-	pitch *= DEG2RAD;
-	return Quaternion(float3(0.0f,0.0f,1.0f),yaw)*Quaternion(float3(1.0f,0.0f,0.0f),pitch)*Quaternion(float3(0.0f,1.0f,0.0f),roll);
-}
-
-PxF32 Yaw( const Quaternion& q )
-{
-	static float3 v;
-	v=q.ydir();
-	return (v.y==0.0&&v.x==0.0) ? 0.0f: atan2f(-v.x,v.y)*RAD2DEG;
-}
-
-PxF32 Pitch( const Quaternion& q )
-{
-	static float3 v;
-	v=q.ydir();
-	return atan2f(v.z,sqrtf(sqr(v.x)+sqr(v.y)))*RAD2DEG;
-}
-
-PxF32 Roll( Quaternion q )
-{
-	q = Quaternion(float3(0.0f,0.0f,1.0f),-Yaw(q)*DEG2RAD)  *q;
-	q = Quaternion(float3(1.0f,0.0f,0.0f),-Pitch(q)*DEG2RAD)  *q;
-	return atan2f(-q.xdir().z,q.xdir().x)*RAD2DEG;
-}
-
-PxF32 Yaw( const float3& v )
-{
-	return (v.y==0.0&&v.x==0.0) ? 0.0f: atan2f(-v.x,v.y)*RAD2DEG;
-}
-
-PxF32 Pitch( const float3& v )
-{
-	return atan2f(v.z,sqrtf(sqr(v.x)+sqr(v.y)))*RAD2DEG;
-}
-
-
-//------------- Plane --------------
-
-
-void Plane::Transform(const float3 &position, const Quaternion &orientation) {
-	//   Transforms the plane to the space defined by the 
-	//   given position/orientation.
-	static float3 newnormal;
-	static float3 origin;
-
-	newnormal = Inverse(orientation)*normal;
-	origin = Inverse(orientation)*(-normal*dist - position);
-
-	normal = newnormal;
-	dist = -dot(newnormal, origin);
-}
-
-
-
-
-//--------- utility functions -------------
-
-//        RotationArc()
-// Given two vectors v0 and v1 this function
-// returns quaternion q where q*v0==v1.
-// Routine taken from game programming gems.
-Quaternion RotationArc(float3 v0,float3 v1){
-	static Quaternion q;
-	v0 = normalize(v0);  // Comment these two lines out if you know its not needed.
-	v1 = normalize(v1);  // If vector is already unit length then why do it again?
-	float3  c = cross(v0,v1);
-	PxF32   d = dot(v0,v1);
-	if(d<=-1.0f) { return Quaternion(1,0,0,0);} // 180 about x axis
-	PxF32   s = sqrtf((1+d)*2);
-	q.x = c.x / s;
-	q.y = c.y / s;
-	q.z = c.z / s;
-	q.w = s /2.0f;
-	return q;
-}
-
-
-float4x4 MatrixFromQuatVec(const Quaternion &q, const float3 &v) 
-{
-	// builds a 4x4 transformation matrix based on orientation q and translation v 
-	PxF32 qx2 = q.x*q.x;
-	PxF32 qy2 = q.y*q.y;
-	PxF32 qz2 = q.z*q.z;
-
-	PxF32 qxqy = q.x*q.y;
-	PxF32 qxqz = q.x*q.z;
-	PxF32 qxqw = q.x*q.w;
-	PxF32 qyqz = q.y*q.z;
-	PxF32 qyqw = q.y*q.w;
-	PxF32 qzqw = q.z*q.w;
-
-	return float4x4(
-		1-2*(qy2+qz2),  
-		2*(qxqy+qzqw),  
-		2*(qxqz-qyqw),  
-		0            ,  
-		2*(qxqy-qzqw),  
-		1-2*(qx2+qz2),  
-		2*(qyqz+qxqw),  
-		0            ,  
-		2*(qxqz+qyqw),  
-		2*(qyqz-qxqw),  
-		1-2*(qx2+qy2),  
-		0    , 
-		 v.x ,
-		 v.y ,
-		 v.z ,
-		 1.0f );
-}
-
-
-float3 PlaneLineIntersection(const Plane &plane, const float3 &p0, const float3 &p1)
-{
-	// returns the point where the line p0-p1 intersects the plane n&d
-				static float3 dif;
-		dif = p1-p0;
-				PxF32 dn= dot(plane.normal,dif);
-				PxF32 t = -(plane.dist+dot(plane.normal,p0) )/dn;
-				return p0 + (dif*t);
-}
-
-float3 PlaneProject(const Plane &plane, const float3 &point)
-{
-	return point - plane.normal * (dot(point,plane.normal)+plane.dist);
-}
-
-float3 LineProject(const float3 &p0, const float3 &p1, const float3 &a)
-{
-	float3 w;
-	w = p1-p0;
-	PxF32 t= dot(w,(a-p0)) / (sqr(w.x)+sqr(w.y)+sqr(w.z));
-	return p0+ w*t;
-}
-
-
-PxF32 LineProjectTime(const float3 &p0, const float3 &p1, const float3 &a)
-{
-	float3 w;
-	w = p1-p0;
-	PxF32 t= dot(w,(a-p0)) / (sqr(w.x)+sqr(w.y)+sqr(w.z));
-	return t;
-}
-
-
-
-float3 TriNormal(const float3 &v0, const float3 &v1, const float3 &v2)
+static float3 TriNormal(const float3 &v0, const float3 &v1, const float3 &v2)
 {
 	// return the normal of the triangle
 	// inscribed by v0, v1, and v2
@@ -1323,232 +549,6 @@ float3 TriNormal(const float3 &v0, const float3 &v1, const float3 &v2)
 }
 
 
-
-PxI32 BoxInside(const float3 &p, const float3 &bmin, const float3 &bmax) 
-{
-	return (p.x >= bmin.x && p.x <=bmax.x && 
-			p.y >= bmin.y && p.y <=bmax.y && 
-			p.z >= bmin.z && p.z <=bmax.z );
-}
-
-
-PxI32 BoxIntersect(const float3 &v0, const float3 &v1, const float3 &bmin, const float3 &bmax,float3 *impact)
-{
-	if(BoxInside(v0,bmin,bmax))
-		{
-				*impact=v0;
-				return 1;
-		}
-	if(v0.x<=bmin.x && v1.x>=bmin.x) 
-		{
-		PxF32 a = (bmin.x-v0.x)/(v1.x-v0.x);
-		//v.x = bmin.x;
-		PxF32 vy =  (1-a) *v0.y + a*v1.y;
-		PxF32 vz =  (1-a) *v0.z + a*v1.z;
-		if(vy>=bmin.y && vy<=bmax.y && vz>=bmin.z && vz<=bmax.z) 
-				{
-			impact->x = bmin.x;
-			impact->y = vy;
-			impact->z = vz;
-			return 1;
-		}
-	}
-	else if(v0.x >= bmax.x  &&  v1.x <= bmax.x) 
-		{
-		PxF32 a = (bmax.x-v0.x)/(v1.x-v0.x);
-		//v.x = bmax.x;
-		PxF32 vy =  (1-a) *v0.y + a*v1.y;
-		PxF32 vz =  (1-a) *v0.z + a*v1.z;
-		if(vy>=bmin.y && vy<=bmax.y && vz>=bmin.z && vz<=bmax.z) 
-				{
-			impact->x = bmax.x;
-			impact->y = vy;
-			impact->z = vz;
-			return 1;
-		}
-	}
-	if(v0.y<=bmin.y && v1.y>=bmin.y) 
-		{
-		PxF32 a = (bmin.y-v0.y)/(v1.y-v0.y);
-		PxF32 vx =  (1-a) *v0.x + a*v1.x;
-		//v.y = bmin.y;
-		PxF32 vz =  (1-a) *v0.z + a*v1.z;
-		if(vx>=bmin.x && vx<=bmax.x && vz>=bmin.z && vz<=bmax.z) 
-				{
-			impact->x = vx;
-			impact->y = bmin.y;
-			impact->z = vz;
-			return 1;
-		}
-	}
-	else if(v0.y >= bmax.y  &&  v1.y <= bmax.y) 
-		{
-		PxF32 a = (bmax.y-v0.y)/(v1.y-v0.y);
-		PxF32 vx =  (1-a) *v0.x + a*v1.x;
-		// vy = bmax.y;
-		PxF32 vz =  (1-a) *v0.z + a*v1.z;
-		if(vx>=bmin.x && vx<=bmax.x && vz>=bmin.z && vz<=bmax.z) 
-				{
-			impact->x = vx;
-			impact->y = bmax.y;
-			impact->z = vz;
-			return 1;
-		}
-	}
-	if(v0.z<=bmin.z && v1.z>=bmin.z) 
-		{
-		PxF32 a = (bmin.z-v0.z)/(v1.z-v0.z);
-		PxF32 vx =  (1-a) *v0.x + a*v1.x;
-		PxF32 vy =  (1-a) *v0.y + a*v1.y;
-		// v.z = bmin.z;
-		if(vy>=bmin.y && vy<=bmax.y && vx>=bmin.x && vx<=bmax.x) 
-				{
-			impact->x = vx;
-			impact->y = vy;
-			impact->z = bmin.z;
-			return 1;
-		}
-	}
-	else if(v0.z >= bmax.z  &&  v1.z <= bmax.z) 
-		{
-		PxF32 a = (bmax.z-v0.z)/(v1.z-v0.z);
-		PxF32 vx =  (1-a) *v0.x + a*v1.x;
-		PxF32 vy =  (1-a) *v0.y + a*v1.y;
-		// v.z = bmax.z;
-		if(vy>=bmin.y && vy<=bmax.y && vx>=bmin.x && vx<=bmax.x) 
-				{
-			impact->x = vx;
-			impact->y = vy;
-			impact->z = bmax.z;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-
-PxF32 DistanceBetweenLines(const float3 &ustart, const float3 &udir, const float3 &vstart, const float3 &vdir, float3 *upoint, float3 *vpoint)
-{
-	static float3 cp;
-	cp = normalize(cross(udir,vdir));
-
-	PxF32 distu = -dot(cp,ustart);
-	PxF32 distv = -dot(cp,vstart);
-	PxF32 dist = (PxF32)fabs(distu-distv);
-	if(upoint) 
-		{
-		Plane plane;
-		plane.normal = normalize(cross(vdir,cp));
-		plane.dist = -dot(plane.normal,vstart);
-		*upoint = PlaneLineIntersection(plane,ustart,ustart+udir);
-	}
-	if(vpoint) 
-		{
-		Plane plane;
-		plane.normal = normalize(cross(udir,cp));
-		plane.dist = -dot(plane.normal,ustart);
-		*vpoint = PlaneLineIntersection(plane,vstart,vstart+vdir);
-	}
-	return dist;
-}
-
-
-Quaternion VirtualTrackBall(const float3 &cop, const float3 &cor, const float3 &dir1, const float3 &dir2) 
-{
-	// routine taken from game programming gems.
-	// Implement track ball functionality to spin stuf on the screen
-	//  cop   center of projection
-	//  cor   center of rotation
-	//  dir1  old mouse direction 
-	//  dir2  new mouse direction
-	// pretend there is a sphere around cor.  Then find the points
-	// where dir1 and dir2 intersect that sphere.  Find the
-	// rotation that takes the first point to the second.
-	PxF32 m;
-	// compute plane 
-	float3 nrml = cor - cop;
-	PxF32 fudgefactor = 1.0f/(magnitude(nrml) * 0.25f); // since trackball proportional to distance from cop
-	nrml = normalize(nrml);
-	PxF32 dist = -dot(nrml,cor);
-	float3 u= PlaneLineIntersection(Plane(nrml,dist),cop,cop+dir1);
-	u=u-cor;
-	u=u*fudgefactor;
-	m= magnitude(u);
-	if(m>1) 
-		{
-				u/=m;
-		}
-	else 
-		{
-		u=u - (nrml * sqrtf(1-m*m));
-	}
-	float3 v= PlaneLineIntersection(Plane(nrml,dist),cop,cop+dir2);
-	v=v-cor;
-	v=v*fudgefactor;
-	m= magnitude(v);
-	if(m>1) 
-		{
-				v/=m;
-		}
-	else 
-		{
-		v=v - (nrml * sqrtf(1-m*m));
-	}
-	return RotationArc(u,v);
-}
-
-
-PxI32 countpolyhit=0;
-PxI32 PolyHit(const float3 *vert, const PxI32 n, const float3 &v0, const float3 &v1, float3 *impact, float3 *normal)
-{
-	countpolyhit++;
-	PxI32 i;
-	float3 nrml(0,0,0);
-	for(i=0;i<n;i++) 
-		{
-		PxI32 i1=(i+1)%n;
-		PxI32 i2=(i+2)%n;
-		nrml = nrml + cross(vert[i1]-vert[i],vert[i2]-vert[i1]);
-	}
-
-	PxF32 m = magnitude(nrml);
-	if(m==0.0)
-		{
-				return 0;
-		}
-	nrml = nrml * (1.0f/m);
-	PxF32 dist = -dot(nrml,vert[0]);
-	PxF32 d0,d1;
-	if((d0=dot(v0,nrml)+dist) <0  ||  (d1=dot(v1,nrml)+dist) >0) 
-		{        
-				return 0;
-		}
-
-	static float3 the_point; 
-	// By using the cached plane distances d0 and d1
-	// we can optimize the following:
-	//     the_point = planelineintersection(nrml,dist,v0,v1);
-	PxF32 a = d0/(d0-d1);
-	the_point = v0*(1-a) + v1*a;
-
-
-	PxI32 inside=1;
-	for(PxI32 j=0;inside && j<n;j++) 
-		{
-			// let inside = 0 if outside
-			float3 pp1,pp2,side;
-			pp1 = vert[j] ;
-			pp2 = vert[(j+1)%n];
-			side = cross((pp2-pp1),(the_point-pp1));
-			inside = (dot(nrml,side) >= 0.0);
-	}
-	if(inside) 
-		{
-		if(normal){*normal=nrml;}
-		if(impact){*impact=the_point;}
-	}
-	return inside;
-}
 
 //****************************************************
 // HULL.H source code goes here
@@ -2791,7 +1791,7 @@ bool ComputeHull(PxU32 vcount,const PxF32 *vertices,PHullResult &result,PxU32 vl
 void ReleaseHull(PHullResult &result)
 {
   PX_FREE(result.mIndices);	// PT: I added that. Is it ok ?
-  PX_FREE(result.mVertices);	// PT: I added that. Is it ok ?
+//??  PX_FREE(result.mVertices);	// PT: I added that. Is it ok ?
 	result.mVcount = 0;
 	result.mIndexCount = 0;
 	result.mIndices = 0;
@@ -2802,440 +1802,7 @@ void ReleaseHull(PHullResult &result)
 
 
 //****** HULLLIB source code
-
-
-HullError HullLibrary::CreateConvexHull(const HullDesc       &desc,           // describes the input request
-																				HullResult           &result)         // contains the resulst
-{
-	HullError ret = QE_FAIL;
-
-
-	PHullResult hr;
-
-	PxU32 vcount = desc.mVcount;
-	if ( vcount < 8 ) vcount = 8;
-
-	PxF32 *vsource  = (PxF32 *) PX_ALLOC( sizeof(PxF32)*vcount*3 );
-
-
-	PxF32 scale[3];
-
-	PxU32 ovcount;
-
-	bool ok = CleanupVertices(desc.mVcount,desc.mVertices, desc.mVertexStride, ovcount, vsource, desc.mNormalEpsilon, scale ); // normalize point cloud, remove duplicates!
-
-	if ( ok )
-	{
-
-
-		{
-			for (PxU32 i=0; i<ovcount; i++)
-			{
-				PxF32 *v = &vsource[i*3];
-				v[0]*=scale[0];
-				v[1]*=scale[1];
-				v[2]*=scale[2];
-			}
-		}
-
-		PxF32 skinwidth = 0;
-		if ( desc.HasHullFlag(QF_SKIN_WIDTH) ) 
-			skinwidth = desc.mSkinWidth;
-
-		ok = ComputeHull(ovcount,vsource,hr,desc.mMaxVertices,skinwidth);
-
-		if ( ok )
-		{
-
-			// re-index triangle mesh so it refers to only used vertices, rebuild a new vertex table.
-			PxF32 *vscratch = (PxF32 *) PX_ALLOC( sizeof(PxF32)*hr.mVcount*3);
-			BringOutYourDead(hr.mVertices,hr.mVcount, vscratch, ovcount, hr.mIndices, hr.mIndexCount );
-
-			ret = QE_OK;
-
-			if ( desc.HasHullFlag(QF_TRIANGLES) ) // if he wants the results as triangle!
-			{
-				result.mPolygons          = false;
-				result.mNumOutputVertices = ovcount;
-				result.mOutputVertices    = (PxF32 *)PX_ALLOC( sizeof(PxF32)*ovcount*3);
-				result.mNumFaces          = hr.mFaceCount;
-				result.mNumIndices        = hr.mIndexCount;
-
-				result.mIndices           = (PxU32 *) PX_ALLOC( sizeof(PxU32)*hr.mIndexCount);
-
-				memcpy(result.mOutputVertices, vscratch, sizeof(PxF32)*3*ovcount );
-
-  			if ( desc.HasHullFlag(QF_REVERSE_ORDER) )
-				{
-
-					const PxU32 *source = hr.mIndices;
-								PxU32 *dest   = result.mIndices;
-
-					for (PxU32 i=0; i<hr.mFaceCount; i++)
-					{
-						dest[0] = source[2];
-						dest[1] = source[1];
-						dest[2] = source[0];
-						dest+=3;
-						source+=3;
-					}
-
-				}
-				else
-				{
-					memcpy(result.mIndices, hr.mIndices, sizeof(PxU32)*hr.mIndexCount);
-				}
-			}
-			else
-			{
-				result.mPolygons          = true;
-				result.mNumOutputVertices = ovcount;
-				result.mOutputVertices    = (PxF32 *)PX_ALLOC( sizeof(PxF32)*ovcount*3);
-				result.mNumFaces          = hr.mFaceCount;
-				result.mNumIndices        = hr.mIndexCount+hr.mFaceCount;
-				result.mIndices           = (PxU32 *) PX_ALLOC( sizeof(PxU32)*result.mNumIndices);
-				memcpy(result.mOutputVertices, vscratch, sizeof(PxF32)*3*ovcount );
-
-				{
-					const PxU32 *source = hr.mIndices;
-								PxU32 *dest   = result.mIndices;
-					for (PxU32 i=0; i<hr.mFaceCount; i++)
-					{
-						dest[0] = 3;
-						if ( desc.HasHullFlag(QF_REVERSE_ORDER) )
-						{
-							dest[1] = source[2];
-							dest[2] = source[1];
-							dest[3] = source[0];
-						}
-						else
-						{
-							dest[1] = source[0];
-							dest[2] = source[1];
-							dest[3] = source[2];
-						}
-
-						dest+=4;
-						source+=3;
-					}
-				}
-			}
-			// ReleaseHull frees memory for hr.mVertices, which can be the
-			// same pointer as vsource, so be sure to set it to NULL if necessary
-			if ( hr.mVertices == vsource) vsource = NULL;
-
-			ReleaseHull(hr);
-
-			if ( vscratch )
-			{
-				PX_FREE(vscratch);
-			}
-		}
-	}
-
-	// this pointer is usually freed in ReleaseHull()
-	if ( vsource )
-	{
-		PX_FREE(vsource);
-	}
-
-
-	return ret;
-}
-
-
-
-HullError HullLibrary::ReleaseResult(HullResult &result) // release memory allocated for this result, we are done with it.
-{
-	if ( result.mOutputVertices )
-	{
-		PX_FREE(result.mOutputVertices);
-		result.mOutputVertices = 0;
-	}
-	if ( result.mIndices )
-	{
-		PX_FREE(result.mIndices);
-		result.mIndices = 0;
-	}
-	return QE_OK;
-}
-
-
-static void AddPoint(PxU32 &vcount,PxF32 *p,PxF32 x,PxF32 y,PxF32 z)
-{
-	PxF32 *dest = &p[vcount*3];
-	dest[0] = x;
-	dest[1] = y;
-	dest[2] = z;
-	vcount++;
-}
-
-
-PxF32 GetDist(PxF32 px,PxF32 py,PxF32 pz,const PxF32 *p2)
-{
-
-	PxF32 dx = px - p2[0];
-	PxF32 dy = py - p2[1];
-	PxF32 dz = pz - p2[2];
-
-	return dx*dx+dy*dy+dz*dz;
-}
-
-
-
-bool  HullLibrary::CleanupVertices(PxU32 svcount,
-																const PxF32 *svertices,
-																PxU32 stride,
-																PxU32 &vcount,       // output number of vertices
-																PxF32 *vertices,                 // location to store the results.
-																PxF32  normalepsilon,
-																PxF32 *scale)
-{
-	if ( svcount == 0 ) return false;
-
-
-	#define EPSILON 0.000001f // close enough to consider two floating point numbers to be 'the same'.
-
-	vcount = 0;
-
-	PxF32 recip[3];
-
-	if ( scale )
-	{
-		scale[0] = 1;
-		scale[1] = 1;
-		scale[2] = 1;
-	}
-
-	PxF32 bmin[3] = {  FLT_MAX,  FLT_MAX,  FLT_MAX };
-	PxF32 bmax[3] = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
-
-	const char *vtx = (const char *) svertices;
-
-	{
-		for (PxU32 i=0; i<svcount; i++)
-		{
-			const PxF32 *p = (const PxF32 *) vtx;
-
-			vtx+=stride;
-
-			for (PxI32 j=0; j<3; j++)
-			{
-				if ( p[j] < bmin[j] ) bmin[j] = p[j];
-				if ( p[j] > bmax[j] ) bmax[j] = p[j];
-			}
-		}
-	}
-
-	PxF32 dx = bmax[0] - bmin[0];
-	PxF32 dy = bmax[1] - bmin[1];
-	PxF32 dz = bmax[2] - bmin[2];
-
-	PxF32 center[3];
-
-	center[0] = dx*0.5f + bmin[0];
-	center[1] = dy*0.5f + bmin[1];
-	center[2] = dz*0.5f + bmin[2];
-
-	if ( dx < EPSILON || dy < EPSILON || dz < EPSILON || svcount < 3 )
-	{
-
-		PxF32 len = FLT_MAX;
-
-		if ( dx > EPSILON && dx < len ) len = dx;
-		if ( dy > EPSILON && dy < len ) len = dy;
-		if ( dz > EPSILON && dz < len ) len = dz;
-
-		if ( len == FLT_MAX )
-		{
-			dx = dy = dz = 0.01f; // one centimeter
-		}
-		else
-		{
-			if ( dx < EPSILON ) dx = len * 0.05f; // 1/5th the shortest non-zero edge.
-			if ( dy < EPSILON ) dy = len * 0.05f;
-			if ( dz < EPSILON ) dz = len * 0.05f;
-		}
-
-		PxF32 x1 = center[0] - dx;
-		PxF32 x2 = center[0] + dx;
-
-		PxF32 y1 = center[1] - dy;
-		PxF32 y2 = center[1] + dy;
-
-		PxF32 z1 = center[2] - dz;
-		PxF32 z2 = center[2] + dz;
-
-		AddPoint(vcount,vertices,x1,y1,z1);
-		AddPoint(vcount,vertices,x2,y1,z1);
-		AddPoint(vcount,vertices,x2,y2,z1);
-		AddPoint(vcount,vertices,x1,y2,z1);
-		AddPoint(vcount,vertices,x1,y1,z2);
-		AddPoint(vcount,vertices,x2,y1,z2);
-		AddPoint(vcount,vertices,x2,y2,z2);
-		AddPoint(vcount,vertices,x1,y2,z2);
-
-		return true; // return cube
-
-
-	}
-	else
-	{
-		if ( scale )
-		{
-			scale[0] = dx;
-			scale[1] = dy;
-			scale[2] = dz;
-
-			recip[0] = 1 / dx;
-			recip[1] = 1 / dy;
-			recip[2] = 1 / dz;
-
-			center[0]*=recip[0];
-			center[1]*=recip[1];
-			center[2]*=recip[2];
-
-		}
-
-	}
-
-
-
-	vtx = (const char *) svertices;
-
-	for (PxU32 i=0; i<svcount; i++)
-	{
-
-		const PxF32 *p = (const PxF32 *)vtx;
-		vtx+=stride;
-
-		PxF32 px = p[0];
-		PxF32 py = p[1];
-		PxF32 pz = p[2];
-
-		if ( scale )
-		{
-			px = px*recip[0]; // normalize
-			py = py*recip[1]; // normalize
-			pz = pz*recip[2]; // normalize
-		}
-
-		{
-			PxU32 j;
-
-			for (j=0; j<vcount; j++)
-			{
-				PxF32 *v = &vertices[j*3];
-
-				PxF32 x = v[0];
-				PxF32 y = v[1];
-				PxF32 z = v[2];
-
-				PxF32 dx = fabsf(x - px );
-				PxF32 dy = fabsf(y - py );
-				PxF32 dz = fabsf(z - pz );
-
-				if ( dx < normalepsilon && dy < normalepsilon && dz < normalepsilon )
-				{
-					// ok, it is close enough to the old one
-					// now let us see if it is further from the center of the point cloud than the one we already recorded.
-					// in which case we keep this one instead.
-
-					PxF32 dist1 = GetDist(px,py,pz,center);
-					PxF32 dist2 = GetDist(v[0],v[1],v[2],center);
-
-					if ( dist1 > dist2 )
-					{
-						v[0] = px;
-						v[1] = py;
-						v[2] = pz;
-					}
-
-					break;
-				}
-			}
-
-			if ( j == vcount )
-			{
-				PxF32 *dest = &vertices[vcount*3];
-				dest[0] = px;
-				dest[1] = py;
-				dest[2] = pz;
-				vcount++;
-			}
-		}
-	}
-
-	// ok..now make sure we didn't prune so many vertices it is now invalid.
-	{
-		PxF32 bmin[3] = {  FLT_MAX,  FLT_MAX,  FLT_MAX };
-		PxF32 bmax[3] = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
-
-		for (PxU32 i=0; i<vcount; i++)
-		{
-			const PxF32 *p = &vertices[i*3];
-			for (PxI32 j=0; j<3; j++)
-			{
-				if ( p[j] < bmin[j] ) bmin[j] = p[j];
-				if ( p[j] > bmax[j] ) bmax[j] = p[j];
-			}
-		}
-
-		PxF32 dx = bmax[0] - bmin[0];
-		PxF32 dy = bmax[1] - bmin[1];
-		PxF32 dz = bmax[2] - bmin[2];
-
-		if ( dx < EPSILON || dy < EPSILON || dz < EPSILON || vcount < 3)
-		{
-			PxF32 cx = dx*0.5f + bmin[0];
-			PxF32 cy = dy*0.5f + bmin[1];
-			PxF32 cz = dz*0.5f + bmin[2];
-
-			PxF32 len = FLT_MAX;
-
-			if ( dx >= EPSILON && dx < len ) len = dx;
-			if ( dy >= EPSILON && dy < len ) len = dy;
-			if ( dz >= EPSILON && dz < len ) len = dz;
-
-			if ( len == FLT_MAX )
-			{
-				dx = dy = dz = 0.01f; // one centimeter
-			}
-			else
-			{
-				if ( dx < EPSILON ) dx = len * 0.05f; // 1/5th the shortest non-zero edge.
-				if ( dy < EPSILON ) dy = len * 0.05f;
-				if ( dz < EPSILON ) dz = len * 0.05f;
-			}
-
-			PxF32 x1 = cx - dx;
-			PxF32 x2 = cx + dx;
-
-			PxF32 y1 = cy - dy;
-			PxF32 y2 = cy + dy;
-
-			PxF32 z1 = cz - dz;
-			PxF32 z2 = cz + dz;
-
-			vcount = 0; // add box
-
-			AddPoint(vcount,vertices,x1,y1,z1);
-			AddPoint(vcount,vertices,x2,y1,z1);
-			AddPoint(vcount,vertices,x2,y2,z1);
-			AddPoint(vcount,vertices,x1,y2,z1);
-			AddPoint(vcount,vertices,x1,y1,z2);
-			AddPoint(vcount,vertices,x2,y1,z2);
-			AddPoint(vcount,vertices,x2,y2,z2);
-			AddPoint(vcount,vertices,x1,y2,z2);
-
-			return true;
-		}
-	}
-
-	return true;
-}
-
-void HullLibrary::BringOutYourDead(const PxF32 *verts,PxU32 vcount, PxF32 *overts,PxU32 &ocount,PxU32 *indices,PxU32 indexcount)
+static void bringOutYourDead(const PxF32 *verts,PxU32 vcount, PxF32 *overts,PxU32 &ocount,PxU32 *indices,PxU32 indexcount)
 {
 	PxU32 *used = (PxU32 *)PX_ALLOC(sizeof(PxU32)*vcount);
 	memset(used,0,sizeof(PxU32)*vcount);
@@ -3272,170 +1839,49 @@ void HullLibrary::BringOutYourDead(const PxF32 *verts,PxU32 vcount, PxF32 *overt
 	PX_FREE(used);
 }
 
-//==================================================================================
-HullError HullLibrary::CreateTriangleMesh(HullResult &answer,ConvexHullTriangleInterface *iface)
+
+
+bool createConvexHull(PxU32 vcount,const PxF32 *vertices,HullResult &result,PxU32 maxHullVertices,PxF32 hullSkinWidth)
 {
-	HullError ret = QE_FAIL;
-
-
-	const PxF32 *p            = answer.mOutputVertices;
-	const PxU32   *idx = answer.mIndices;
-	PxU32 fcount       = answer.mNumFaces;
-
-	if ( p && idx && fcount )
+	PHullResult hr;
+	bool ret = ComputeHull(vcount,vertices,hr,maxHullVertices,hullSkinWidth);
+	if ( ret )
 	{
-		ret = QE_OK;
-
-		for (PxU32 i=0; i<fcount; i++)
-		{
-			PxU32 pcount = *idx++;
-
-			PxU32 i1 = *idx++;
-			PxU32 i2 = *idx++;
-			PxU32 i3 = *idx++;
-
-			const PxF32 *p1 = &p[i1*3];
-			const PxF32 *p2 = &p[i2*3];
-			const PxF32 *p3 = &p[i3*3];
-
-			AddConvexTriangle(iface,p1,p2,p3);
-
-			pcount-=3;
-			while ( pcount )
-			{
-				i3 = *idx++;
-				p2 = p3;
-				p3 = &p[i3*3];
-
-				AddConvexTriangle(iface,p1,p2,p3);
-				pcount--;
-			}
-
-		}
+		// re-index triangle mesh so it refers to only used vertices, rebuild a new vertex table.
+		PxF32 *vscratch = (PxF32 *) PX_ALLOC( sizeof(PxF32)*hr.mVcount*3);
+		PxU32 ovcount;
+		bringOutYourDead(hr.mVertices,hr.mVcount, vscratch, ovcount, hr.mIndices, hr.mIndexCount );
+		result.mNumOutputVertices = ovcount;
+		result.mOutputVertices    = (PxF32 *)PX_ALLOC( sizeof(PxF32)*ovcount*3);
+		result.mNumFaces          = hr.mFaceCount;
+		result.mNumIndices        = hr.mIndexCount;
+		result.mIndices           = (PxU32 *) PX_ALLOC( sizeof(PxU32)*hr.mIndexCount);
+		memcpy(result.mOutputVertices, vscratch, sizeof(PxF32)*3*ovcount );
+		memcpy(result.mIndices, hr.mIndices, sizeof(PxU32)*hr.mIndexCount);
+		ReleaseHull(hr);
+		PX_FREE(vscratch);
 	}
+
 
 	return ret;
 }
 
-//==================================================================================
-void HullLibrary::AddConvexTriangle(ConvexHullTriangleInterface *callback,const PxF32 *p1,const PxF32 *p2,const PxF32 *p3)
+
+
+void releaseHullResult(HullResult &result) // release memory allocated for this result, we are done with it.
 {
-	ConvexHullVertex v1,v2,v3;
-
-	#define TSCALE1 (1.0f/4.0f)
-
-	v1.mPos[0] = p1[0];
-	v1.mPos[1] = p1[1];
-	v1.mPos[2] = p1[2];
-
-	v2.mPos[0] = p2[0];
-	v2.mPos[1] = p2[1];
-	v2.mPos[2] = p2[2];
-
-	v3.mPos[0] = p3[0];
-	v3.mPos[1] = p3[1];
-	v3.mPos[2] = p3[2];
-
-	PxF32 n[3];
-	ComputeNormal(n,p1,p2,p3);
-
-	v1.mNormal[0] = n[0];
-	v1.mNormal[1] = n[1];
-	v1.mNormal[2] = n[2];
-
-	v2.mNormal[0] = n[0];
-	v2.mNormal[1] = n[1];
-	v2.mNormal[2] = n[2];
-
-	v3.mNormal[0] = n[0];
-	v3.mNormal[1] = n[1];
-	v3.mNormal[2] = n[2];
-
-	const PxF32 *tp1 = p1;
-	const PxF32 *tp2 = p2;
-	const PxF32 *tp3 = p3;
-
-	PxI32 i1 = 0;
-	PxI32 i2 = 0;
-
-	PxF32 nx = fabsf(n[0]);
-	PxF32 ny = fabsf(n[1]);
-	PxF32 nz = fabsf(n[2]);
-
-	if ( nx <= ny && nx <= nz )
-		i1 = 0;
-	if ( ny <= nx && ny <= nz )
-		i1 = 1;
-	if ( nz <= nx && nz <= ny )
-		i1 = 2;
-
-	switch ( i1 )
+	if ( result.mOutputVertices )
 	{
-		case 0:
-			if ( ny < nz )
-				i2 = 1;
-			else
-				i2 = 2;
-			break;
-		case 1:
-			if ( nx < nz )
-				i2 = 0;
-			else
-				i2 = 2;
-			break;
-		case 2:
-			if ( nx < ny )
-				i2 = 0;
-			else
-				i2 = 1;
-			break;
+		PX_FREE(result.mOutputVertices);
+		result.mOutputVertices = 0;
 	}
-
-	v1.mTexel[0] = tp1[i1]*TSCALE1;
-	v1.mTexel[1] = tp1[i2]*TSCALE1;
-
-	v2.mTexel[0] = tp2[i1]*TSCALE1;
-	v2.mTexel[1] = tp2[i2]*TSCALE1;
-
-	v3.mTexel[0] = tp3[i1]*TSCALE1;
-	v3.mTexel[1] = tp3[i2]*TSCALE1;
-
-	callback->ConvexHullTriangle(v3,v2,v1);
+	if ( result.mIndices )
+	{
+		PX_FREE(result.mIndices);
+		result.mIndices = 0;
+	}
 }
 
-//==================================================================================
-PxF32 HullLibrary::ComputeNormal(PxF32 *n,const PxF32 *A,const PxF32 *B,const PxF32 *C)
-{
-	PxF32 vx,vy,vz,wx,wy,wz,vw_x,vw_y,vw_z,mag;
 
-	vx = (B[0] - C[0]);
-	vy = (B[1] - C[1]);
-	vz = (B[2] - C[2]);
-
-	wx = (A[0] - B[0]);
-	wy = (A[1] - B[1]);
-	wz = (A[2] - B[2]);
-
-	vw_x = vy * wz - vz * wy;
-	vw_y = vz * wx - vx * wz;
-	vw_z = vx * wy - vy * wx;
-
-	mag = sqrtf((vw_x * vw_x) + (vw_y * vw_y) + (vw_z * vw_z));
-
-	if ( mag < 0.000001f )
-	{
-		mag = 0;
-	}
-	else
-	{
-		mag = 1.0f/mag;
-	}
-
-	n[0] = vw_x * mag;
-	n[1] = vw_y * mag;
-	n[2] = vw_z * mag;
-
-	return mag;
-}
 
 }; // End of namespace
