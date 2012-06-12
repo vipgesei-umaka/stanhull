@@ -197,6 +197,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\StanHullConfig.h"
+				>
+			</File>
+			<File
 				RelativePath=".\wavefront.h"
 				>
 			</File>

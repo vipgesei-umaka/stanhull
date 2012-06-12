@@ -29,13 +29,17 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
-#include <assert.h>
 
+
+#include <stdarg.h>
+#include <setjmp.h>
 
 #include "StanHull.h"
 
-namespace stanhull
+namespace physx
 {
+	namespace stanhull
+	{
 
 //*****************************************************
 //*** DARRAY.H
@@ -62,9 +66,23 @@ template <class Type> class StanArray
 	Type *		element;
 	PxI32			count;
 	PxI32			array_size;
-	const Type	&operator[](PxI32 i) const { PX_ASSERT(i>=0 && i<count);  return element[i]; }
-	Type		&operator[](PxI32 i)  { PX_ASSERT(i>=0 && i<count);  return element[i]; }
-	Type		&Pop() { PX_ASSERT(count); count--;  return element[count]; }
+	const Type	&operator[](PxI32 i) const 
+	{ 
+		PX_ASSERT(i>=0 && i<count);  
+		return element[i]; 
+	}
+	Type		&operator[](PxI32 i)  
+	{ 
+		PX_ASSERT(i>=0 && i<count);  
+		return element[i]; 
+	}
+
+	Type		&Pop() 
+	{ 
+		PX_ASSERT(count); 
+		count--;  
+		return element[count]; 
+	}
 	StanArray<Type> &operator=(StanArray<Type> &array);
 	StanArray<Type> &operator=(ArrayRet<Type> &array);
 	// operator ArrayRet<Type> &() { return *(ArrayRet<Type> *)this;} // this worked but i suspect could be dangerous
@@ -139,7 +157,7 @@ template <class Type> void StanArray<Type>::allocate(PxI32 s)
 	PX_ASSERT(s>=count);
 	Type *old = element;
 	array_size =s;
-	element = (Type *) PX_ALLOC( sizeof(Type)*array_size );
+	element = (Type *) PX_ALLOC( sizeof(Type)*array_size, PX_DEBUG_EXP("StanArray") );
 	PX_ASSERT(element);
 	for(PxI32 i=0;i<count;i++)
 	{
@@ -160,7 +178,7 @@ template <class Type> void StanArray<Type>::SetSize(PxI32 s)
 			PX_FREE(element);
 			element = NULL;
 		}
- 	  array_size = s;
+ 		array_size = s;
 	}
 	else
 	{
@@ -198,7 +216,10 @@ template <class Type> PxI32 StanArray<Type>::Contains(Type t)
 
 template <class Type> void StanArray<Type>::AddUnique(Type t)
 {
-	if(!Contains(t)) Add(t);
+	if(!Contains(t)) 
+	{
+		Add(t);
+	}
 }
 
 
@@ -269,13 +290,11 @@ template <class Type> PxI32 StanArray<Type>::IndexOf(Type t)
 #define SQRT_OF_2 (1.4142135f)
 #define OFFSET(Class,Member)  (((char*) (&(((Class*)NULL)-> Member )))- ((char*)NULL))
 
-
-
-//static PxI32    argmin(PxF32 a[],PxI32 n);
-static PxF32  sqr(PxF32 a); 
-//static PxF32  clampf(PxF32 a) ;
-//static PxF32  Round(PxF32 a,PxF32 precision);
-//static PxF32  Interpolate(const PxF32 &f0,const PxF32 &f1,PxF32 alpha) ;
+PxI32    argmin(PxF32 a[],PxI32 n);
+PxF32  sqr(PxF32 a); 
+PxF32  clampf(PxF32 a) ;
+PxF32  Round(PxF32 a,PxF32 precision);
+PxF32  Interpolate(const PxF32 &f0,const PxF32 &f1,PxF32 alpha) ;
 
 template <class T>
 void Swap(T &a,T &b) 
@@ -301,67 +320,271 @@ T Min(const T &a,const T &b)
 
 //----------------------------------
 
-class int3  : public UserAllocated
+class int3  : public physx::UserAllocated
 {
 public:
 	PxI32 x,y,z;
 	int3(){};
-	int3(PxI32 _x,PxI32 _y, PxI32 _z){x=_x;y=_y;z=_z;}
-	const PxI32& operator[](PxI32 i) const {return (&x)[i];}
-	PxI32& operator[](PxI32 i) {return (&x)[i];}
+	int3(PxI32 _x,PxI32 _y, PxI32 _z)
+	{
+		x=_x;
+		y=_y;
+		z=_z;
+	}
+	const PxI32& operator[](PxI32 i) const 
+	{
+		return (&x)[i];
+	}
+	PxI32& operator[](PxI32 i) 
+	{
+		return (&x)[i];
+	}
 };
 
+
+//-------- 2D --------
+
+class float2  : public physx::UserAllocated
+{
+public:
+	PxF32 x,y;
+	float2(){x=0;y=0;};
+	float2(PxF32 _x,PxF32 _y)
+	{
+		x=_x;
+		y=_y;
+	}
+	PxF32& operator[](PxI32 i) 
+	{
+		PX_ASSERT(i>=0&&i<2);
+		return ((PxF32*)this)[i];
+	}
+	const PxF32& operator[](PxI32 i) const 
+	{
+		PX_ASSERT(i>=0&&i<2);
+		return ((PxF32*)this)[i];
+	}
+};
+
+inline float2 operator-( const float2& a, const float2& b )
+{
+	return float2(a.x-b.x,a.y-b.y);
+}
+
+inline float2 operator+( const float2& a, const float2& b )
+{
+	return float2(a.x+b.x,a.y+b.y);
+}
 
 //--------- 3D ---------
 
-class float3  : public UserAllocated // 3D
+class float3  : public physx::UserAllocated // 3D
 {
 	public:
 	PxF32 x,y,z;
-	float3(){x=0;y=0;z=0;};
-	float3(PxF32 _x,PxF32 _y,PxF32 _z){x=_x;y=_y;z=_z;};
+	float3()
+	{
+		x=0;
+		y=0;
+		z=0;
+	};
+	float3(PxF32 _x,PxF32 _y,PxF32 _z)
+	{
+		x=_x;
+		y=_y;
+		z=_z;
+	};
 	//operator PxF32 *() { return &x;};
-	PxF32& operator[](PxI32 i) {PX_ASSERT(i>=0&&i<3);return ((PxF32*)this)[i];}
-	const PxF32& operator[](PxI32 i) const {PX_ASSERT(i>=0&&i<3);return ((PxF32*)this)[i];}
+	PxF32& operator[](PxI32 i) 
+	{
+		PX_ASSERT(i>=0&&i<3);
+		return ((PxF32*)this)[i];
+	}
+	const PxF32& operator[](PxI32 i) const 
+	{
+		PX_ASSERT(i>=0&&i<3);
+		return ((PxF32*)this)[i];
+	}
 };
 
 
-static float3& operator+=( float3 &a, const float3& b );
-static float3& operator-=( float3 &a ,const float3& b );
+float3& operator+=( float3 &a, const float3& b );
+float3& operator-=( float3 &a ,const float3& b );
+float3& operator*=( float3 &v ,const PxF32 s );
+float3& operator/=( float3 &v, const PxF32 s );
 
-static PxF32  magnitude( const float3& v );
-static float3 normalize( const float3& v );
-static float3 operator+( const float3& a, const float3& b );
-static float3 operator-( const float3& a, const float3& b );
-static float3 operator-( const float3& v );
-static float3 operator*( const float3& v, const PxF32 s );
-static float3 operator/( const float3& v, const PxF32 s );
-static inline PxI32 operator==( const float3 &a, const float3 &b ) { return (a.x==b.x && a.y==b.y && a.z==b.z); }
-static inline PxI32 operator!=( const float3 &a, const float3 &b ) { return (a.x!=b.x || a.y!=b.y || a.z!=b.z); }
-static PxF32  dot( const float3& a, const float3& b );
-static float3 cross( const float3& a, const float3& b );
-static float3	VectorMax(const float3 &a, const float3 &b);
-static float3	VectorMin(const float3 &a, const float3 &b);
+PxF32  magnitude( const float3& v );
+float3 normalize( const float3& v );
+float3 safenormalize(const float3 &v);
+float3 vabs(const float3 &v);
+float3 operator+( const float3& a, const float3& b );
+float3 operator-( const float3& a, const float3& b );
+float3 operator-( const float3& v );
+float3 operator*( const float3& v, const PxF32 s );
+float3 operator*( const PxF32 s, const float3& v );
+float3 operator/( const float3& v, const PxF32 s );
+inline PxI32 operator==( const float3 &a, const float3 &b ) 
+{ 
+	return (a.x==b.x && a.y==b.y && a.z==b.z); 
+}
+inline PxI32 operator!=( const float3 &a, const float3 &b ) 
+{ 
+	return (a.x!=b.x || a.y!=b.y || a.z!=b.z); 
+}
+// due to ambiguity and inconsistent standards ther are no overloaded operators for mult such as va*vb.
+PxF32  dot( const float3& a, const float3& b );
+float3 cmul( const float3 &a, const float3 &b);
+float3 cross( const float3& a, const float3& b );
+float3 Interpolate(const float3 &v0,const float3 &v1,PxF32 alpha);
+float3 Round(const float3& a,PxF32 precision);
+float3	VectorMax(const float3 &a, const float3 &b);
+float3	VectorMin(const float3 &a, const float3 &b);
 
 
 
-class float3x3  : public UserAllocated
+class float3x3  : public physx::UserAllocated
 {
 	public:
 	float3 x,y,z;  // the 3 rows of the Matrix
 	float3x3(){}
 	float3x3(PxF32 xx,PxF32 xy,PxF32 xz,PxF32 yx,PxF32 yy,PxF32 yz,PxF32 zx,PxF32 zy,PxF32 zz):x(xx,xy,xz),y(yx,yy,yz),z(zx,zy,zz){}
 	float3x3(float3 _x,float3 _y,float3 _z):x(_x),y(_y),z(_z){}
-	float3&       operator[](PxI32 i)       {PX_ASSERT(i>=0&&i<3);return (&x)[i];}
-	const float3& operator[](PxI32 i) const {PX_ASSERT(i>=0&&i<3);return (&x)[i];}
-	PxF32&        operator()(PxI32 r, PxI32 c)       {PX_ASSERT(r>=0&&r<3&&c>=0&&c<3);return ((&x)[r])[c];}
-	const PxF32&  operator()(PxI32 r, PxI32 c) const {PX_ASSERT(r>=0&&r<3&&c>=0&&c<3);return ((&x)[r])[c];}
+	float3&       operator[](PxI32 i)       
+	{
+		PX_ASSERT(i>=0&&i<3);
+		return (&x)[i];
+	}
+	const float3& operator[](PxI32 i) const 
+	{
+		PX_ASSERT(i>=0&&i<3);
+		return (&x)[i];
+	}
+	PxF32&        operator()(PxI32 r, PxI32 c)       
+	{
+		PX_ASSERT(r>=0&&r<3&&c>=0&&c<3);
+		return ((&x)[r])[c];
+	}
+	const PxF32&  operator()(PxI32 r, PxI32 c) const 
+	{
+		PX_ASSERT(r>=0&&r<3&&c>=0&&c<3);
+		return ((&x)[r])[c];
+	}
 }; 
+float3x3 Transpose( const float3x3& m );
+float3   operator*( const float3& v  , const float3x3& m  );
+float3   operator*( const float3x3& m , const float3& v   );
+float3x3 operator*( const float3x3& m , const PxF32& s   );
+float3x3 operator*( const float3x3& ma, const float3x3& mb );
+float3x3 operator/( const float3x3& a, const PxF32& s ) ;
+float3x3 operator+( const float3x3& a, const float3x3& b );
+float3x3 operator-( const float3x3& a, const float3x3& b );
+float3x3 &operator+=( float3x3& a, const float3x3& b );
+float3x3 &operator-=( float3x3& a, const float3x3& b );
+float3x3 &operator*=( float3x3& a, const PxF32& s );
+PxF32    Determinant(const float3x3& m );
+float3x3 Inverse(const float3x3& a);  // its just 3x3 so we simply do that cofactor method
 
-static float3x3 Transpose( const float3x3& m );
-static float3   operator*( const float3& v  , const float3x3& m  );
-static PxF32    Determinant(const float3x3& m );
-static float3x3 Inverse(const float3x3& a);  // its just 3x3 so we simply do that cofactor method
+
+//-------- 4D Math --------
+
+class float4  : public physx::UserAllocated
+{
+public:
+	PxF32 x,y,z,w;
+	float4(){x=0;y=0;z=0;w=0;};
+	float4(PxF32 _x,PxF32 _y,PxF32 _z,PxF32 _w){x=_x;y=_y;z=_z;w=_w;}
+	float4(const float3 &v,PxF32 _w){x=v.x;y=v.y;z=v.z;w=_w;}
+	//operator PxF32 *() { return &x;};
+	PxF32& operator[](PxI32 i) {PX_ASSERT(i>=0&&i<4);return ((PxF32*)this)[i];}
+	const PxF32& operator[](PxI32 i) const {PX_ASSERT(i>=0&&i<4);return ((PxF32*)this)[i];}
+	const float3& xyz() const { return *((float3*)this);}
+	float3&       xyz()       { return *((float3*)this);}
+};
+
+
+struct D3DXMATRIX; 
+
+class float4x4  : public physx::UserAllocated
+{
+	public:
+	float4 x,y,z,w;  // the 4 rows
+	float4x4(){}
+	float4x4(const float4 &_x, const float4 &_y, const float4 &_z, const float4 &_w):x(_x),y(_y),z(_z),w(_w){}
+	float4x4(PxF32 m00, PxF32 m01, PxF32 m02, PxF32 m03, 
+						PxF32 m10, PxF32 m11, PxF32 m12, PxF32 m13, 
+				PxF32 m20, PxF32 m21, PxF32 m22, PxF32 m23, 
+				PxF32 m30, PxF32 m31, PxF32 m32, PxF32 m33 )
+			:x(m00,m01,m02,m03),y(m10,m11,m12,m13),z(m20,m21,m22,m23),w(m30,m31,m32,m33){}
+	PxF32&       operator()(PxI32 r, PxI32 c)       {PX_ASSERT(r>=0&&r<4&&c>=0&&c<4);return ((&x)[r])[c];}
+	const PxF32& operator()(PxI32 r, PxI32 c) const {PX_ASSERT(r>=0&&r<4&&c>=0&&c<4);return ((&x)[r])[c];}
+		operator       PxF32* ()       {return &x.x;}
+		operator const PxF32* () const {return &x.x;}
+	operator       struct D3DXMATRIX* ()       { return (struct D3DXMATRIX*) this;}
+	operator const struct D3DXMATRIX* () const { return (struct D3DXMATRIX*) this;}
+};
+
+
+PxI32     operator==( const float4 &a, const float4 &b );
+float4 Homogenize(const float3 &v3,const PxF32 &w=1.0f); // Turns a 3D float3 4D vector4 by appending w
+float4 cmul( const float4 &a, const float4 &b);
+float4 operator*( const float4 &v, PxF32 s);
+float4 operator*( PxF32 s, const float4 &v);
+float4 operator+( const float4 &a, const float4 &b);
+float4 operator-( const float4 &a, const float4 &b);
+float4x4 operator*( const float4x4& a, const float4x4& b );
+float4 operator*( const float4& v, const float4x4& m );
+float4x4 Inverse(const float4x4 &m);
+float4x4 MatrixRigidInverse(const float4x4 &m);
+float4x4 MatrixTranspose(const float4x4 &m);
+float4x4 MatrixPerspectiveFov(PxF32 fovy, PxF32 Aspect, PxF32 zn, PxF32 zf );
+float4x4 MatrixTranslation(const float3 &t);
+float4x4 MatrixRotationZ(const PxF32 angle_radians);
+float4x4 MatrixLookAt(const float3& eye, const float3& at, const float3& up);
+PxI32     operator==( const float4x4 &a, const float4x4 &b );
+
+
+//-------- Quaternion ------------
+
+class Quaternion :public float4
+{
+ public:
+	Quaternion() { x = y = z = 0.0f; w = 1.0f; }
+	Quaternion( float3 v, PxF32 t ) { v = normalize(v); w = cosf(t/2.0f); v = v*sinf(t/2.0f); x = v.x; y = v.y; z = v.z; }
+	Quaternion(PxF32 _x, PxF32 _y, PxF32 _z, PxF32 _w){x=_x;y=_y;z=_z;w=_w;}
+	PxF32 angle() const { return acosf(w)*2.0f; }
+	float3 axis() const { float3 a(x,y,z); if(fabsf(angle())<0.0000001f) return float3(1,0,0); return a*(1/sinf(angle()/2.0f)); }
+	float3 xdir() const { return float3( 1-2*(y*y+z*z),  2*(x*y+w*z),  2*(x*z-w*y) ); }
+	float3 ydir() const { return float3(   2*(x*y-w*z),1-2*(x*x+z*z),  2*(y*z+w*x) ); }
+	float3 zdir() const { return float3(   2*(x*z+w*y),  2*(y*z-w*x),1-2*(x*x+y*y) ); }
+	float3x3 getmatrix() const { return float3x3( xdir(), ydir(), zdir() ); }
+	operator float3x3() { return getmatrix(); }
+	void Normalize();
+};
+
+Quaternion& operator*=(Quaternion& a, PxF32 s );
+Quaternion	operator*( const Quaternion& a, PxF32 s );
+Quaternion	operator*( const Quaternion& a, const Quaternion& b);
+Quaternion	operator+( const Quaternion& a, const Quaternion& b );
+Quaternion	normalize( Quaternion a );
+PxF32		dot( const Quaternion &a, const Quaternion &b );
+float3		operator*( const Quaternion& q, const float3& v );
+float3		operator*( const float3& v, const Quaternion& q );
+Quaternion	slerp( Quaternion a, const Quaternion& b, PxF32 interp );
+Quaternion  Interpolate(const Quaternion &q0,const Quaternion &q1,PxF32 alpha); 
+Quaternion  RotationArc(float3 v0, float3 v1 );  // returns quat q where q*v0=v1
+Quaternion  Inverse(const Quaternion &q);
+float4x4     MatrixFromQuatVec(const Quaternion &q, const float3 &v);
+
+
+//------ Euler Angle -----
+
+Quaternion YawPitchRoll( PxF32 yaw, PxF32 pitch, PxF32 roll );
+PxF32 Yaw( const Quaternion& q );
+PxF32 Pitch( const Quaternion& q );
+PxF32 Roll( Quaternion q );
+PxF32 Yaw( const float3& v );
+PxF32 Pitch( const float3& v );
+
 
 //------- Plane ----------
 
@@ -372,19 +595,30 @@ class Plane
 	PxF32	dist;   // distance below origin - the D from plane equasion Ax+By+Cz+D=0
 			Plane(const float3 &n,PxF32 d):normal(n),dist(d){}
 			Plane():normal(),dist(0){}
+	void	Transform(const float3 &position, const Quaternion &orientation);
 };
 
-static inline Plane PlaneFlip(const Plane &plane){return Plane(-plane.normal,-plane.dist);}
-static inline PxI32 operator==( const Plane &a, const Plane &b ) { return (a.normal==b.normal && a.dist==b.dist); }
-static inline PxI32 coplanar( const Plane &a, const Plane &b ) { return (a==b || a==PlaneFlip(b)); }
+inline Plane PlaneFlip(const Plane &plane){return Plane(-plane.normal,-plane.dist);}
+inline PxI32 operator==( const Plane &a, const Plane &b ) { return (a.normal==b.normal && a.dist==b.dist); }
+inline PxI32 coplanar( const Plane &a, const Plane &b ) { return (a==b || a==PlaneFlip(b)); }
 
 
 //--------- Utility Functions ------
 
-static float3  PlaneLineIntersection(const Plane &plane, const float3 &p0, const float3 &p1);
-static float3  ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2);
-static float3  TriNormal(const float3 &v0, const float3 &v1, const float3 &v2);
-static float3  NormalOf(const float3 *vert, const PxI32 n);
+float3  PlaneLineIntersection(const Plane &plane, const float3 &p0, const float3 &p1);
+float3  PlaneProject(const Plane &plane, const float3 &point);
+float3  LineProject(const float3 &p0, const float3 &p1, const float3 &a);  // projects a onto infinite line p0p1
+PxF32   LineProjectTime(const float3 &p0, const float3 &p1, const float3 &a);
+float3  ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2);
+PxI32     PolyHit(const float3 *vert,const PxI32 n,const float3 &v0, const float3 &v1, float3 *impact=NULL, float3 *normal=NULL);
+PxI32     BoxInside(const float3 &p,const float3 &bmin, const float3 &bmax) ;
+PxI32     BoxIntersect(const float3 &v0, const float3 &v1, const float3 &bmin, const float3 &bmax, float3 *impact);
+PxF32   DistanceBetweenLines(const float3 &ustart, const float3 &udir, const float3 &vstart, const float3 &vdir, float3 *upoint=NULL, float3 *vpoint=NULL);
+float3  TriNormal(const float3 &v0, const float3 &v1, const float3 &v2);
+float3  NormalOf(const float3 *vert, const PxI32 n);
+Quaternion VirtualTrackBall(const float3 &cop, const float3 &cor, const float3 &dir0, const float3 &dir1);
+
+
 
 
 //*****************************************************
@@ -392,55 +626,98 @@ static float3  NormalOf(const float3 *vert, const PxI32 n);
 //*****************************************************
 
 
-static PxF32   sqr(PxF32 a) {return a*a;}
+PxF32   sqr(PxF32 a) {return a*a;}
+PxF32   clampf(PxF32 a) {return Min(1.0f,Max(0.0f,a));}
+
+
+PxF32 Round(PxF32 a,PxF32 precision)
+{
+	return floorf(0.5f+a/precision)*precision;
+}
+
+
+PxF32 Interpolate(const PxF32 &f0,const PxF32 &f1,PxF32 alpha) 
+{
+	return f0*(1-alpha) + f1*alpha;
+}
+
+
+PxI32     argmin(PxF32 a[],PxI32 n)
+{
+	PxI32 r=0;
+	for(PxI32 i=1;i<n;i++) 
+		{
+		if(a[i]<a[r]) 
+				{
+			r = i;			
+		}
+	}
+	return r;
+}
+
 
 
 //------------ float3 (3D) --------------
 
 
 
-static float3 operator+( const float3& a, const float3& b ) 
+float3 operator+( const float3& a, const float3& b ) 
 {
 	return float3(a.x+b.x, a.y+b.y, a.z+b.z); 
 }
 
 
-static float3 operator-( const float3& a, const float3& b )
+float3 operator-( const float3& a, const float3& b )
 {
 	return float3( a.x-b.x, a.y-b.y, a.z-b.z ); 
 }
 
 
-static float3 operator-( const float3& v )                     
+float3 operator-( const float3& v )                     
 {
 	return float3( -v.x, -v.y, -v.z ); 
 }
 
 
-static float3 operator*( const float3& v, PxF32 s )      
+float3 operator*( const float3& v, PxF32 s )      
 {
 	return float3( v.x*s, v.y*s, v.z*s ); 
 }
 
 
-static float3 operator/( const float3& v, PxF32 s )
+float3 operator*( PxF32 s, const float3& v )      
+{
+	return float3( v.x*s, v.y*s, v.z*s ); 
+}
+
+
+float3 operator/( const float3& v, PxF32 s )
 { 
 	return v*(1.0f/s); 
 }
 
-static PxF32  dot( const float3& a, const float3& b )    
+PxF32  dot( const float3& a, const float3& b )    
 {
 	return a.x*b.x + a.y*b.y + a.z*b.z; 
 }
 
-static float3 cross( const float3& a, const float3& b )
+float3 cmul( const float3 &v1, const float3 &v2) 
+{ 
+	return float3(v1.x*v2.x, v1.y*v2.y, v1.z*v2.z); 
+}
+
+
+float3 cross( const float3& a, const float3& b )
 {
 		return float3( a.y*b.z - a.z*b.y,
 									 a.z*b.x - a.x*b.z,
 									 a.x*b.y - a.y*b.x );
 }
 
-static float3& operator+=( float3& a , const float3& b )
+
+
+
+float3& operator+=( float3& a , const float3& b )
 {
 		a.x += b.x;
 		a.y += b.y;
@@ -449,7 +726,7 @@ static float3& operator+=( float3& a , const float3& b )
 }
 
 
-static float3& operator-=( float3& a , const float3& b )
+float3& operator-=( float3& a , const float3& b )
 {
 		a.x -= b.x;
 		a.y -= b.y;
@@ -458,17 +735,42 @@ static float3& operator-=( float3& a , const float3& b )
 }
 
 
-static PxF32 magnitude( const float3& v )
+float3& operator*=(float3& v , PxF32 s )
+{
+		v.x *= s;
+		v.y *= s;
+		v.z *= s;
+		return v;
+}
+
+
+float3& operator/=(float3& v , PxF32 s )
+{
+		PxF32 sinv = 1.0f / s;
+		v.x *= sinv;
+		v.y *= sinv;
+		v.z *= sinv;
+		return v;
+}
+
+float3 vabs(const float3 &v)
+{
+	return float3(fabsf(v.x),fabsf(v.y),fabsf(v.z));
+}
+
+
+PxF32 magnitude( const float3& v )
 {
 		return sqrtf(sqr(v.x) + sqr( v.y)+ sqr(v.z));
 }
 
-static float3 normalize( const float3 &v )
+float3 normalize( const float3 &v )
 {
 	// this routine, normalize, is ok, provided magnitude works!!
 		PxF32 d=magnitude(v);
 		if (d==0) 
 		{
+		printf("Cant normalize ZERO vector\n");
 		PX_ALWAYS_ASSERT();// yes this could go here
 		d=0.1f;
 	}
@@ -476,25 +778,54 @@ static float3 normalize( const float3 &v )
 	return float3(v.x*d,v.y*d,v.z*d);
 }
 
+float3 safenormalize(const float3 &v)
+{
+	if(magnitude(v)<=0.0f)
+	{
+		return float3(1,0,0);
+	}
+	return normalize(v);
+}
 
-static float3 VectorMin(const float3 &a,const float3 &b)
+float3 Round(const float3 &a,PxF32 precision)
+{
+	return float3(Round(a.x,precision),Round(a.y,precision),Round(a.z,precision));
+}
+
+
+float3 Interpolate(const float3 &v0,const float3 &v1,PxF32 alpha) 
+{
+	return v0*(1-alpha) + v1*alpha;
+}
+
+float3 VectorMin(const float3 &a,const float3 &b)
 {
 	return float3(Min(a.x,b.x),Min(a.y,b.y),Min(a.z,b.z));
 }
-
-static float3 VectorMax(const float3 &a,const float3 &b)
+float3 VectorMax(const float3 &a,const float3 &b)
 {
 	return float3(Max(a.x,b.x),Max(a.y,b.y),Max(a.z,b.z));
 }
 
+// the statement v1*v2 is ambiguous since there are 3 types
+// of vector multiplication
+//  - componantwise (for example combining colors)
+//  - dot product
+//  - cross product
+// Therefore we never declare/implement this function.
+// So we will never see:  float3 operator*(float3 a,float3 b) 
+
+
+
+
 //------------ float3x3 ---------------
-static PxF32 Determinant(const float3x3 &m)
+PxF32 Determinant(const float3x3 &m)
 {
 	return  m.x.x*m.y.y*m.z.z + m.y.x*m.z.y*m.x.z + m.z.x*m.x.y*m.y.z 
 			 -m.x.x*m.z.y*m.y.z - m.y.x*m.x.y*m.z.z - m.z.x*m.y.y*m.x.z ;
 }
 
-static float3x3 Inverse(const float3x3 &a)
+float3x3 Inverse(const float3x3 &a)
 {
 	float3x3 b;
 	PxF32 d=Determinant(a);
@@ -516,7 +847,7 @@ static float3x3 Inverse(const float3x3 &a)
 }
 
 
-static float3x3 Transpose( const float3x3& m )
+float3x3 Transpose( const float3x3& m )
 {
 	return float3x3( float3(m.x.x,m.y.x,m.z.x),
 					float3(m.x.y,m.y.y,m.z.y),
@@ -524,13 +855,63 @@ static float3x3 Transpose( const float3x3& m )
 }
 
 
-static float3 operator*(const float3& v , const float3x3 &m ) {
+float3 operator*(const float3& v , const float3x3 &m ) {
 	return float3((m.x.x*v.x + m.y.x*v.y + m.z.x*v.z), 
 					(m.x.y*v.x + m.y.y*v.y + m.z.y*v.z), 
 					(m.x.z*v.x + m.y.z*v.y + m.z.z*v.z));
 }
+float3 operator*(const float3x3 &m,const float3& v  ) { 
+	return float3(dot(m.x,v),dot(m.y,v),dot(m.z,v));
+}
 
-static float3 ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2){
+
+float3x3 operator*( const float3x3& a, const float3x3& b )  
+{ 
+	return float3x3(a.x*b,a.y*b,a.z*b);
+}
+
+float3x3 operator*( const float3x3& a, const PxF32& s )  
+{ 
+	return float3x3(a.x*s, a.y*s ,a.z*s); 
+}
+float3x3 operator/( const float3x3& a, const PxF32& s )  
+{ 
+	PxF32 t=1/s;
+	return float3x3(a.x*t, a.y*t ,a.z*t); 
+}
+float3x3 operator+( const float3x3& a, const float3x3& b )
+{
+	return float3x3(a.x+b.x, a.y+b.y, a.z+b.z);
+}
+float3x3 operator-( const float3x3& a, const float3x3& b )
+{
+	return float3x3(a.x-b.x, a.y-b.y, a.z-b.z);
+}
+float3x3 &operator+=( float3x3& a, const float3x3& b )
+{
+	a.x+=b.x;
+	a.y+=b.y;
+	a.z+=b.z;
+	return a;
+}
+float3x3 &operator-=( float3x3& a, const float3x3& b )
+{
+	a.x-=b.x;
+	a.y-=b.y;
+	a.z-=b.z;
+	return a;
+}
+float3x3 &operator*=( float3x3& a, const PxF32& s )
+{
+	a.x*=s;
+	a.y*=s;
+	a.z*=s;
+	return a;
+}
+
+
+
+float3 ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plane &p2){
 	float3x3 mp =Transpose(float3x3(p0.normal,p1.normal,p2.normal));
 	float3x3 mi = Inverse(mp);
 	float3 b(p0.dist,p1.dist,p2.dist);
@@ -538,7 +919,485 @@ static float3 ThreePlaneIntersection(const Plane &p0,const Plane &p1, const Plan
 }
 
 
-static float3 TriNormal(const float3 &v0, const float3 &v1, const float3 &v2)
+//--------------- 4D ----------------
+
+float4   operator*( const float4&   v, const float4x4& m )
+{
+	return v.x*m.x + v.y*m.y + v.z*m.z + v.w*m.w; // yes this actually works
+}
+
+PxI32 operator==( const float4 &a, const float4 &b ) 
+{
+	return (a.x==b.x && a.y==b.y && a.z==b.z && a.w==b.w);
+}
+
+
+//  Dont implement m*v for now, since that might confuse us
+//  All our transforms are based on multiplying the "row" vector on the left
+//float4   operator*(const float4x4& m , const float4&   v )
+//{
+//	return float4(dot(v,m.x),dot(v,m.y),dot(v,m.z),dot(v,m.w));
+//}
+
+
+
+float4 cmul( const float4 &a, const float4 &b) 
+{
+	return float4(a.x*b.x,a.y*b.y,a.z*b.z,a.w*b.w);
+}
+
+
+float4 operator*( const float4 &v, PxF32 s) 
+{
+	return float4(v.x*s,v.y*s,v.z*s,v.w*s);
+}
+
+
+float4 operator*( PxF32 s, const float4 &v) 
+{
+	return float4(v.x*s,v.y*s,v.z*s,v.w*s);
+}
+
+
+float4 operator+( const float4 &a, const float4 &b) 
+{
+	return float4(a.x+b.x,a.y+b.y,a.z+b.z,a.w+b.w);
+}
+
+
+
+float4 operator-( const float4 &a, const float4 &b) 
+{
+	return float4(a.x-b.x,a.y-b.y,a.z-b.z,a.w-b.w);
+}
+
+
+float4 Homogenize(const float3 &v3,const PxF32 &w)
+{
+	return float4(v3.x,v3.y,v3.z,w);
+}
+
+
+
+float4x4 operator*( const float4x4& a, const float4x4& b )
+{
+	return float4x4(a.x*b,a.y*b,a.z*b,a.w*b);
+}
+
+float4x4 MatrixTranspose(const float4x4 &m)
+{
+	return float4x4(
+		m.x.x, m.y.x, m.z.x, m.w.x,
+		m.x.y, m.y.y, m.z.y, m.w.y,
+		m.x.z, m.y.z, m.z.z, m.w.z,
+		m.x.w, m.y.w, m.z.w, m.w.w );
+}
+
+float4x4 MatrixRigidInverse(const float4x4 &m)
+{
+	float4x4 trans_inverse = MatrixTranslation(-m.w.xyz());
+	float4x4 rot   = m;
+	rot.w = float4(0,0,0,1);
+	return trans_inverse * MatrixTranspose(rot);
+}
+
+
+float4x4 MatrixPerspectiveFov(PxF32 fovy, PxF32 aspect, PxF32 zn, PxF32 zf )
+{
+	PxF32 h = 1.0f/tanf(fovy/2.0f); // view space height
+	PxF32 w = h / aspect ;  // view space width
+	return float4x4(
+		w, 0, 0             ,   0,
+		0, h, 0             ,   0,
+		0, 0, zf/(zn-zf)    ,  -1,
+		0, 0, zn*zf/(zn-zf) ,   0 );
+}
+
+
+
+float4x4 MatrixLookAt(const float3& eye, const float3& at, const float3& up)
+{
+	float4x4 m;
+	m.w.w = 1.0f;
+	m.w.xyz() = eye;
+	m.z.xyz() = normalize(eye-at);
+	m.x.xyz() = normalize(cross(up,m.z.xyz()));
+	m.y.xyz() = cross(m.z.xyz(),m.x.xyz());
+	return MatrixRigidInverse(m);
+}
+
+
+float4x4 MatrixTranslation(const float3 &t)
+{
+	return float4x4(
+		1,  0,  0,  0,
+		0,  1,  0,  0,
+		0,  0,  1,  0,
+		t.x,t.y,t.z,1 );
+}
+
+
+float4x4 MatrixRotationZ(const PxF32 angle_radians)
+{
+	PxF32 s =  sinf(angle_radians);
+	PxF32 c =  cosf(angle_radians);
+	return float4x4(
+		c,  s,  0,  0,
+		-s, c,  0,  0,
+		0,  0,  1,  0,
+		0,  0,  0,  1 );
+}
+
+
+
+PxI32 operator==( const float4x4 &a, const float4x4 &b )
+{
+	return (a.x==b.x && a.y==b.y && a.z==b.z && a.w==b.w);
+}
+
+
+float4x4 Inverse(const float4x4 &m)
+{
+	float4x4 d;
+	PxF32 *dst = &d.x.x;
+	PxF32 tmp[12]; /* temp array for pairs */
+	PxF32 src[16]; /* array of transpose source matrix */
+	PxF32 det; /* determinant */
+	/* transpose matrix */
+	for ( PxI32 i = 0; i < 4; i++) {
+		src[i] = m(i,0) ;
+		src[i + 4] = m(i,1);
+		src[i + 8] = m(i,2);
+		src[i + 12] = m(i,3); 
+	}
+	/* calculate pairs for first 8 elements (cofactors) */
+	tmp[0]  = src[10] * src[15];
+	tmp[1]  = src[11] * src[14];
+	tmp[2]  = src[9] * src[15];
+	tmp[3]  = src[11] * src[13];
+	tmp[4]  = src[9] * src[14];
+	tmp[5]  = src[10] * src[13];
+	tmp[6]  = src[8] * src[15];
+	tmp[7]  = src[11] * src[12];
+	tmp[8]  = src[8] * src[14];
+	tmp[9]  = src[10] * src[12];
+	tmp[10] = src[8] * src[13];
+	tmp[11] = src[9] * src[12];
+	/* calculate first 8 elements (cofactors) */
+	dst[0]  = tmp[0]*src[5] + tmp[3]*src[6] + tmp[4]*src[7];
+	dst[0] -= tmp[1]*src[5] + tmp[2]*src[6] + tmp[5]*src[7];
+	dst[1]  = tmp[1]*src[4] + tmp[6]*src[6] + tmp[9]*src[7];
+	dst[1] -= tmp[0]*src[4] + tmp[7]*src[6] + tmp[8]*src[7];
+	dst[2]  = tmp[2]*src[4] + tmp[7]*src[5] + tmp[10]*src[7];
+	dst[2] -= tmp[3]*src[4] + tmp[6]*src[5] + tmp[11]*src[7];
+	dst[3]  = tmp[5]*src[4] + tmp[8]*src[5] + tmp[11]*src[6];
+	dst[3] -= tmp[4]*src[4] + tmp[9]*src[5] + tmp[10]*src[6];
+	dst[4]  = tmp[1]*src[1] + tmp[2]*src[2] + tmp[5]*src[3];
+	dst[4] -= tmp[0]*src[1] + tmp[3]*src[2] + tmp[4]*src[3];
+	dst[5]  = tmp[0]*src[0] + tmp[7]*src[2] + tmp[8]*src[3];
+	dst[5] -= tmp[1]*src[0] + tmp[6]*src[2] + tmp[9]*src[3];
+	dst[6]  = tmp[3]*src[0] + tmp[6]*src[1] + tmp[11]*src[3];
+	dst[6] -= tmp[2]*src[0] + tmp[7]*src[1] + tmp[10]*src[3];
+	dst[7]  = tmp[4]*src[0] + tmp[9]*src[1] + tmp[10]*src[2];
+	dst[7] -= tmp[5]*src[0] + tmp[8]*src[1] + tmp[11]*src[2];
+	/* calculate pairs for second 8 elements (cofactors) */
+	tmp[0]  = src[2]*src[7];
+	tmp[1]  = src[3]*src[6];
+	tmp[2]  = src[1]*src[7];
+	tmp[3]  = src[3]*src[5];
+	tmp[4]  = src[1]*src[6];
+	tmp[5]  = src[2]*src[5];
+	tmp[6]  = src[0]*src[7];
+	tmp[7]  = src[3]*src[4];
+	tmp[8]  = src[0]*src[6];
+	tmp[9]  = src[2]*src[4];
+	tmp[10] = src[0]*src[5];
+	tmp[11] = src[1]*src[4];
+	/* calculate second 8 elements (cofactors) */
+	dst[8]  = tmp[0]*src[13] + tmp[3]*src[14] + tmp[4]*src[15];
+	dst[8] -= tmp[1]*src[13] + tmp[2]*src[14] + tmp[5]*src[15];
+	dst[9]  = tmp[1]*src[12] + tmp[6]*src[14] + tmp[9]*src[15];
+	dst[9] -= tmp[0]*src[12] + tmp[7]*src[14] + tmp[8]*src[15];
+	dst[10] = tmp[2]*src[12] + tmp[7]*src[13] + tmp[10]*src[15];
+	dst[10]-= tmp[3]*src[12] + tmp[6]*src[13] + tmp[11]*src[15];
+	dst[11] = tmp[5]*src[12] + tmp[8]*src[13] + tmp[11]*src[14];
+	dst[11]-= tmp[4]*src[12] + tmp[9]*src[13] + tmp[10]*src[14];
+	dst[12] = tmp[2]*src[10] + tmp[5]*src[11] + tmp[1]*src[9];
+	dst[12]-= tmp[4]*src[11] + tmp[0]*src[9] + tmp[3]*src[10];
+	dst[13] = tmp[8]*src[11] + tmp[0]*src[8] + tmp[7]*src[10];
+	dst[13]-= tmp[6]*src[10] + tmp[9]*src[11] + tmp[1]*src[8];
+	dst[14] = tmp[6]*src[9] + tmp[11]*src[11] + tmp[3]*src[8];
+	dst[14]-= tmp[10]*src[11] + tmp[2]*src[8] + tmp[7]*src[9];
+	dst[15] = tmp[10]*src[10] + tmp[4]*src[8] + tmp[9]*src[9];
+	dst[15]-= tmp[8]*src[9] + tmp[11]*src[10] + tmp[5]*src[8];
+	/* calculate determinant */
+	det=src[0]*dst[0]+src[1]*dst[1]+src[2]*dst[2]+src[3]*dst[3];
+	/* calculate matrix inverse */
+	det = 1/det;
+	for ( PxI32 j = 0; j < 16; j++)
+	dst[j] *= det;
+	return d;
+}
+
+
+//--------- Quaternion --------------
+	
+Quaternion operator*( const Quaternion& a, const Quaternion& b )
+{
+	Quaternion c;
+	c.w = a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z; 
+	c.x = a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y; 
+	c.y = a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x; 
+	c.z = a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w; 
+	return c;
+}
+
+
+Quaternion operator*( const Quaternion& a, PxF32 b )
+{
+	return Quaternion(a.x*b, a.y*b, a.z*b ,a.w*b);
+}
+
+Quaternion  Inverse(const Quaternion &q)
+{
+	return Quaternion(-q.x,-q.y,-q.z,q.w);
+}
+
+Quaternion& operator*=( Quaternion& q, const PxF32 s )
+{
+		q.x *= s;
+		q.y *= s;
+		q.z *= s;
+		q.w *= s;
+		return q;
+}
+void Quaternion::Normalize()
+{
+	PxF32 m = sqrtf(sqr(w)+sqr(x)+sqr(y)+sqr(z));
+	if(m<0.000000001f) {
+		w=1.0f;
+		x=y=z=0.0f;
+		return;
+	}
+	(*this) *= (1.0f/m);
+}
+
+float3 operator*( const Quaternion& q, const float3& v )
+{
+	// The following is equivalent to:   
+	//return (q.getmatrix() * v);  
+	PxF32 qx2 = q.x*q.x;
+	PxF32 qy2 = q.y*q.y;
+	PxF32 qz2 = q.z*q.z;
+
+	PxF32 qxqy = q.x*q.y;
+	PxF32 qxqz = q.x*q.z;
+	PxF32 qxqw = q.x*q.w;
+	PxF32 qyqz = q.y*q.z;
+	PxF32 qyqw = q.y*q.w;
+	PxF32 qzqw = q.z*q.w;
+	return float3(
+		(1-2*(qy2+qz2))*v.x + (2*(qxqy-qzqw))*v.y + (2*(qxqz+qyqw))*v.z ,
+		(2*(qxqy+qzqw))*v.x + (1-2*(qx2+qz2))*v.y + (2*(qyqz-qxqw))*v.z ,
+		(2*(qxqz-qyqw))*v.x + (2*(qyqz+qxqw))*v.y + (1-2*(qx2+qy2))*v.z  );
+}
+
+Quaternion operator+( const Quaternion& a, const Quaternion& b )
+{
+	return Quaternion(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
+}
+
+PxF32 dot( const Quaternion &a,const Quaternion &b )
+{
+	return  (a.w*b.w + a.x*b.x + a.y*b.y + a.z*b.z); 
+}
+
+Quaternion normalize( Quaternion a )
+{
+	PxF32 m = sqrtf(sqr(a.w)+sqr(a.x)+sqr(a.y)+sqr(a.z));
+	if(m<0.000000001) 
+		{    
+		a.w=1;
+		a.x=a.y=a.z=0;
+		return a;
+	}
+	return a * (1/m);
+}
+
+Quaternion slerp( Quaternion a, const Quaternion& b, PxF32 interp )
+{
+	if(dot(a,b) <0.0) 
+		{
+		a.w=-a.w;
+		a.x=-a.x;
+		a.y=-a.y;
+		a.z=-a.z;
+	}
+	PxF32 d = dot(a,b);
+	if(d>=1.0) {
+		return a;
+	}
+	PxF32 theta = acosf(d);
+	if(theta==0.0f) { return(a);}
+	return a*(sinf(theta-interp*theta)/sinf(theta)) + b*(sinf(interp*theta)/sinf(theta));
+}
+
+
+Quaternion Interpolate(const Quaternion &q0,const Quaternion &q1,PxF32 alpha) {
+	return slerp(q0,q1,alpha);
+}
+
+
+Quaternion YawPitchRoll( PxF32 yaw, PxF32 pitch, PxF32 roll ) 
+{
+	roll  *= DEG2RAD;
+	yaw   *= DEG2RAD;
+	pitch *= DEG2RAD;
+	return Quaternion(float3(0.0f,0.0f,1.0f),yaw)*Quaternion(float3(1.0f,0.0f,0.0f),pitch)*Quaternion(float3(0.0f,1.0f,0.0f),roll);
+}
+
+PxF32 Yaw( const Quaternion& q )
+{
+	static float3 v;
+	v=q.ydir();
+	return (v.y==0.0&&v.x==0.0) ? 0.0f: atan2f(-v.x,v.y)*RAD2DEG;
+}
+
+PxF32 Pitch( const Quaternion& q )
+{
+	static float3 v;
+	v=q.ydir();
+	return atan2f(v.z,sqrtf(sqr(v.x)+sqr(v.y)))*RAD2DEG;
+}
+
+PxF32 Roll( Quaternion q )
+{
+	q = Quaternion(float3(0.0f,0.0f,1.0f),-Yaw(q)*DEG2RAD)  *q;
+	q = Quaternion(float3(1.0f,0.0f,0.0f),-Pitch(q)*DEG2RAD)  *q;
+	return atan2f(-q.xdir().z,q.xdir().x)*RAD2DEG;
+}
+
+PxF32 Yaw( const float3& v )
+{
+	return (v.y==0.0&&v.x==0.0) ? 0.0f: atan2f(-v.x,v.y)*RAD2DEG;
+}
+
+PxF32 Pitch( const float3& v )
+{
+	return atan2f(v.z,sqrtf(sqr(v.x)+sqr(v.y)))*RAD2DEG;
+}
+
+
+//------------- Plane --------------
+
+
+void Plane::Transform(const float3 &position, const Quaternion &orientation) {
+	//   Transforms the plane to the space defined by the 
+	//   given position/orientation.
+	static float3 newnormal;
+	static float3 origin;
+
+	newnormal = Inverse(orientation)*normal;
+	origin = Inverse(orientation)*(-normal*dist - position);
+
+	normal = newnormal;
+	dist = -dot(newnormal, origin);
+}
+
+
+
+
+//--------- utility functions -------------
+
+//        RotationArc()
+// Given two vectors v0 and v1 this function
+// returns quaternion q where q*v0==v1.
+// Routine taken from game programming gems.
+Quaternion RotationArc(float3 v0,float3 v1){
+	static Quaternion q;
+	v0 = normalize(v0);  // Comment these two lines out if you know its not needed.
+	v1 = normalize(v1);  // If vector is already unit length then why do it again?
+	float3  c = cross(v0,v1);
+	PxF32   d = dot(v0,v1);
+	if(d<=-1.0f) { return Quaternion(1,0,0,0);} // 180 about x axis
+	PxF32   s = sqrtf((1+d)*2);
+	q.x = c.x / s;
+	q.y = c.y / s;
+	q.z = c.z / s;
+	q.w = s /2.0f;
+	return q;
+}
+
+
+float4x4 MatrixFromQuatVec(const Quaternion &q, const float3 &v) 
+{
+	// builds a 4x4 transformation matrix based on orientation q and translation v 
+	PxF32 qx2 = q.x*q.x;
+	PxF32 qy2 = q.y*q.y;
+	PxF32 qz2 = q.z*q.z;
+
+	PxF32 qxqy = q.x*q.y;
+	PxF32 qxqz = q.x*q.z;
+	PxF32 qxqw = q.x*q.w;
+	PxF32 qyqz = q.y*q.z;
+	PxF32 qyqw = q.y*q.w;
+	PxF32 qzqw = q.z*q.w;
+
+	return float4x4(
+		1-2*(qy2+qz2),  
+		2*(qxqy+qzqw),  
+		2*(qxqz-qyqw),  
+		0            ,  
+		2*(qxqy-qzqw),  
+		1-2*(qx2+qz2),  
+		2*(qyqz+qxqw),  
+		0            ,  
+		2*(qxqz+qyqw),  
+		2*(qyqz-qxqw),  
+		1-2*(qx2+qy2),  
+		0    , 
+		 v.x ,
+		 v.y ,
+		 v.z ,
+		 1.0f );
+}
+
+
+float3 PlaneLineIntersection(const Plane &plane, const float3 &p0, const float3 &p1)
+{
+	// returns the point where the line p0-p1 intersects the plane n&d
+				static float3 dif;
+		dif = p1-p0;
+				PxF32 dn= dot(plane.normal,dif);
+				PxF32 t = -(plane.dist+dot(plane.normal,p0) )/dn;
+				return p0 + (dif*t);
+}
+
+float3 PlaneProject(const Plane &plane, const float3 &point)
+{
+	return point - plane.normal * (dot(point,plane.normal)+plane.dist);
+}
+
+float3 LineProject(const float3 &p0, const float3 &p1, const float3 &a)
+{
+	float3 w;
+	w = p1-p0;
+	PxF32 t= dot(w,(a-p0)) / (sqr(w.x)+sqr(w.y)+sqr(w.z));
+	return p0+ w*t;
+}
+
+
+PxF32 LineProjectTime(const float3 &p0, const float3 &p1, const float3 &a)
+{
+	float3 w;
+	w = p1-p0;
+	PxF32 t= dot(w,(a-p0)) / (sqr(w.x)+sqr(w.y)+sqr(w.z));
+	return t;
+}
+
+
+
+float3 TriNormal(const float3 &v0, const float3 &v1, const float3 &v2)
 {
 	// return the normal of the triangle
 	// inscribed by v0, v1, and v2
@@ -549,6 +1408,232 @@ static float3 TriNormal(const float3 &v0, const float3 &v1, const float3 &v2)
 }
 
 
+
+PxI32 BoxInside(const float3 &p, const float3 &bmin, const float3 &bmax) 
+{
+	return (p.x >= bmin.x && p.x <=bmax.x && 
+			p.y >= bmin.y && p.y <=bmax.y && 
+			p.z >= bmin.z && p.z <=bmax.z );
+}
+
+
+PxI32 BoxIntersect(const float3 &v0, const float3 &v1, const float3 &bmin, const float3 &bmax,float3 *impact)
+{
+	if(BoxInside(v0,bmin,bmax))
+		{
+				*impact=v0;
+				return 1;
+		}
+	if(v0.x<=bmin.x && v1.x>=bmin.x) 
+		{
+		PxF32 a = (bmin.x-v0.x)/(v1.x-v0.x);
+		//v.x = bmin.x;
+		PxF32 vy =  (1-a) *v0.y + a*v1.y;
+		PxF32 vz =  (1-a) *v0.z + a*v1.z;
+		if(vy>=bmin.y && vy<=bmax.y && vz>=bmin.z && vz<=bmax.z) 
+				{
+			impact->x = bmin.x;
+			impact->y = vy;
+			impact->z = vz;
+			return 1;
+		}
+	}
+	else if(v0.x >= bmax.x  &&  v1.x <= bmax.x) 
+		{
+		PxF32 a = (bmax.x-v0.x)/(v1.x-v0.x);
+		//v.x = bmax.x;
+		PxF32 vy =  (1-a) *v0.y + a*v1.y;
+		PxF32 vz =  (1-a) *v0.z + a*v1.z;
+		if(vy>=bmin.y && vy<=bmax.y && vz>=bmin.z && vz<=bmax.z) 
+				{
+			impact->x = bmax.x;
+			impact->y = vy;
+			impact->z = vz;
+			return 1;
+		}
+	}
+	if(v0.y<=bmin.y && v1.y>=bmin.y) 
+		{
+		PxF32 a = (bmin.y-v0.y)/(v1.y-v0.y);
+		PxF32 vx =  (1-a) *v0.x + a*v1.x;
+		//v.y = bmin.y;
+		PxF32 vz =  (1-a) *v0.z + a*v1.z;
+		if(vx>=bmin.x && vx<=bmax.x && vz>=bmin.z && vz<=bmax.z) 
+				{
+			impact->x = vx;
+			impact->y = bmin.y;
+			impact->z = vz;
+			return 1;
+		}
+	}
+	else if(v0.y >= bmax.y  &&  v1.y <= bmax.y) 
+		{
+		PxF32 a = (bmax.y-v0.y)/(v1.y-v0.y);
+		PxF32 vx =  (1-a) *v0.x + a*v1.x;
+		// vy = bmax.y;
+		PxF32 vz =  (1-a) *v0.z + a*v1.z;
+		if(vx>=bmin.x && vx<=bmax.x && vz>=bmin.z && vz<=bmax.z) 
+				{
+			impact->x = vx;
+			impact->y = bmax.y;
+			impact->z = vz;
+			return 1;
+		}
+	}
+	if(v0.z<=bmin.z && v1.z>=bmin.z) 
+		{
+		PxF32 a = (bmin.z-v0.z)/(v1.z-v0.z);
+		PxF32 vx =  (1-a) *v0.x + a*v1.x;
+		PxF32 vy =  (1-a) *v0.y + a*v1.y;
+		// v.z = bmin.z;
+		if(vy>=bmin.y && vy<=bmax.y && vx>=bmin.x && vx<=bmax.x) 
+				{
+			impact->x = vx;
+			impact->y = vy;
+			impact->z = bmin.z;
+			return 1;
+		}
+	}
+	else if(v0.z >= bmax.z  &&  v1.z <= bmax.z) 
+		{
+		PxF32 a = (bmax.z-v0.z)/(v1.z-v0.z);
+		PxF32 vx =  (1-a) *v0.x + a*v1.x;
+		PxF32 vy =  (1-a) *v0.y + a*v1.y;
+		// v.z = bmax.z;
+		if(vy>=bmin.y && vy<=bmax.y && vx>=bmin.x && vx<=bmax.x) 
+				{
+			impact->x = vx;
+			impact->y = vy;
+			impact->z = bmax.z;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
+PxF32 DistanceBetweenLines(const float3 &ustart, const float3 &udir, const float3 &vstart, const float3 &vdir, float3 *upoint, float3 *vpoint)
+{
+	static float3 cp;
+	cp = normalize(cross(udir,vdir));
+
+	PxF32 distu = -dot(cp,ustart);
+	PxF32 distv = -dot(cp,vstart);
+	PxF32 dist = (PxF32)fabs(distu-distv);
+	if(upoint) 
+		{
+		Plane plane;
+		plane.normal = normalize(cross(vdir,cp));
+		plane.dist = -dot(plane.normal,vstart);
+		*upoint = PlaneLineIntersection(plane,ustart,ustart+udir);
+	}
+	if(vpoint) 
+		{
+		Plane plane;
+		plane.normal = normalize(cross(udir,cp));
+		plane.dist = -dot(plane.normal,ustart);
+		*vpoint = PlaneLineIntersection(plane,vstart,vstart+vdir);
+	}
+	return dist;
+}
+
+
+Quaternion VirtualTrackBall(const float3 &cop, const float3 &cor, const float3 &dir1, const float3 &dir2) 
+{
+	// routine taken from game programming gems.
+	// Implement track ball functionality to spin stuf on the screen
+	//  cop   center of projection
+	//  cor   center of rotation
+	//  dir1  old mouse direction 
+	//  dir2  new mouse direction
+	// pretend there is a sphere around cor.  Then find the points
+	// where dir1 and dir2 intersect that sphere.  Find the
+	// rotation that takes the first point to the second.
+	PxF32 m;
+	// compute plane 
+	float3 nrml = cor - cop;
+	PxF32 fudgefactor = 1.0f/(magnitude(nrml) * 0.25f); // since trackball proportional to distance from cop
+	nrml = normalize(nrml);
+	PxF32 dist = -dot(nrml,cor);
+	float3 u= PlaneLineIntersection(Plane(nrml,dist),cop,cop+dir1);
+	u=u-cor;
+	u=u*fudgefactor;
+	m= magnitude(u);
+	if(m>1) 
+		{
+				u/=m;
+		}
+	else 
+		{
+		u=u - (nrml * sqrtf(1-m*m));
+	}
+	float3 v= PlaneLineIntersection(Plane(nrml,dist),cop,cop+dir2);
+	v=v-cor;
+	v=v*fudgefactor;
+	m= magnitude(v);
+	if(m>1) 
+		{
+				v/=m;
+		}
+	else 
+		{
+		v=v - (nrml * sqrtf(1-m*m));
+	}
+	return RotationArc(u,v);
+}
+
+
+PxI32 countpolyhit=0;
+PxI32 PolyHit(const float3 *vert, const PxI32 n, const float3 &v0, const float3 &v1, float3 *impact, float3 *normal)
+{
+	countpolyhit++;
+	PxI32 i;
+	float3 nrml(0,0,0);
+	for(i=0;i<n;i++) 
+		{
+		PxI32 i1=(i+1)%n;
+		PxI32 i2=(i+2)%n;
+		nrml = nrml + cross(vert[i1]-vert[i],vert[i2]-vert[i1]);
+	}
+
+	PxF32 m = magnitude(nrml);
+	if(m==0.0)
+		{
+				return 0;
+		}
+	nrml = nrml * (1.0f/m);
+	PxF32 dist = -dot(nrml,vert[0]);
+	PxF32 d0,d1;
+	if((d0=dot(v0,nrml)+dist) <0  ||  (d1=dot(v1,nrml)+dist) >0) 
+		{        
+				return 0;
+		}
+
+	static float3 the_point; 
+	// By using the cached plane distances d0 and d1
+	// we can optimize the following:
+	//     the_point = planelineintersection(nrml,dist,v0,v1);
+	PxF32 a = d0/(d0-d1);
+	the_point = v0*(1-a) + v1*a;
+
+
+	PxI32 inside=1;
+	for(PxI32 j=0;inside && j<n;j++) 
+		{
+			// let inside = 0 if outside
+			float3 pp1,pp2,side;
+			pp1 = vert[j] ;
+			pp2 = vert[(j+1)%n];
+			side = cross((pp2-pp1),(the_point-pp1));
+			inside = (dot(nrml,side) >= 0.0);
+	}
+	if(inside) 
+		{
+		if(normal){*normal=nrml;}
+		if(impact){*impact=the_point;}
+	}
+	return inside;
+}
 
 //****************************************************
 // HULL.H source code goes here
@@ -562,18 +1647,20 @@ public:
 		mVcount = 0;
 		mIndexCount = 0;
 		mFaceCount = 0;
-		mVertices = 0;
-		mIndices  = 0;
+		mVertices = NULL;
+		mIndices  = NULL;
+		mFaces = NULL;
 	}
 
-	PxU32 mVcount;
-	PxU32 mIndexCount;
-	PxU32 mFaceCount;
-	PxF32       *mVertices;
-	PxU32 *mIndices;
+	PxU32		mVcount;
+	PxU32		mIndexCount;
+	PxU32		mFaceCount;
+	PxF32		*mVertices;
+	PxU32		*mIndices;
+	PxU8		*mFaces;	// contains the number of points in each face, if this is generating polygons as output.
 };
 
-bool ComputeHull(PxU32 vcount,const PxF32 *vertices,PHullResult &result,PxU32 maxverts,PxF32 inflate);
+bool ComputeHull(PxU32 vcount,const PxF32 *vertices,PHullResult &result,PxU32 maxverts,PxF32 inflate,bool useTriangles);
 void ReleaseHull(PHullResult &result);
 
 //*****************************************************
@@ -593,7 +1680,7 @@ void ReleaseHull(PHullResult &result);
 
 PxF32 planetestepsilon = PAPERWIDTH;
 
-class ConvexH : public UserAllocated
+class ConvexH : public physx::UserAllocated
 {
   public:
 	class HalfEdge
@@ -677,15 +1764,19 @@ public:
 	PxU8 v1;
 };
 
-PxI32 AssertIntact(ConvexH &convex) {
+PxI32 AssertIntact(ConvexH &convex) 
+{
 	PxI32 i;
 	PxI32 estart=0;
-	for(i=0;i<convex.edges.count;i++) {
-		if(convex.edges[estart].p!= convex.edges[i].p) {
+	for(i=0;i<convex.edges.count;i++) 
+	{
+		if(convex.edges[estart].p!= convex.edges[i].p) 
+		{
 			estart=i;
 		}
 		PxI32 inext = i+1;
-		if(inext>= convex.edges.count || convex.edges[inext].p != convex.edges[i].p) {
+		if(inext>= convex.edges.count || convex.edges[inext].p != convex.edges[i].p) 
+		{
 			inext = estart;
 		}
 		PX_ASSERT(convex.edges[inext].p == convex.edges[i].p);
@@ -695,18 +1786,22 @@ PxI32 AssertIntact(ConvexH &convex) {
 		PX_ASSERT(nb!=-1);
 		PX_ASSERT(i== convex.edges[nb].ea);
 	}
-	for(i=0;i<convex.edges.count;i++) {
+	for(i=0;i<convex.edges.count;i++) 
+	{
 		PX_ASSERT(COPLANAR==PlaneTest(convex.facets[convex.edges[i].p],convex.vertices[convex.edges[i].v]));
 		if(COPLANAR!=PlaneTest(convex.facets[convex.edges[i].p],convex.vertices[convex.edges[i].v])) return 0;
-		if(convex.edges[estart].p!= convex.edges[i].p) {
+		if(convex.edges[estart].p!= convex.edges[i].p) 
+		{
 			estart=i;
 		}
 		PxI32 i1 = i+1;
-		if(i1>= convex.edges.count || convex.edges[i1].p != convex.edges[i].p) {
+		if(i1>= convex.edges.count || convex.edges[i1].p != convex.edges[i].p) 
+		{
 			i1 = estart;
 		}
 		PxI32 i2 = i1+1;
-		if(i2>= convex.edges.count || convex.edges[i2].p != convex.edges[i].p) {
+		if(i2>= convex.edges.count || convex.edges[i2].p != convex.edges[i].p) 
+		{
 			i2 = estart;
 		}
 		if(i==i2) continue; // i sliced tangent to an edge and created 2 meaningless edges
@@ -714,7 +1809,10 @@ PxI32 AssertIntact(ConvexH &convex) {
 			                           convex.vertices[convex.edges[i1].v],
 			                           convex.vertices[convex.edges[i2].v]);
 		//PX_ASSERT(dot(localnormal,convex.facets[convex.edges[i].p].normal)>0);//Commented out on Stan Melax' advice
-		if(dot(localnormal,convex.facets[convex.edges[i].p].normal)<=0)return 0;
+		if(dot(localnormal,convex.facets[convex.edges[i].p].normal)<=0)
+		{
+			return 0;
+		}
 	}
 	return 1;
 }
@@ -741,17 +1839,21 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 
 	StanArray<REAL3> createdverts;
 	// do the side-of-plane tests
-	for(i=0;i<convex.vertices.count;i++) {
+	for(i=0;i<convex.vertices.count;i++) 
+	{
 		vertflag[i].planetest = (PxU8)PlaneTest(slice,convex.vertices[i]);
-		if(vertflag[i].planetest == COPLANAR) {
+		if(vertflag[i].planetest == COPLANAR) 
+		{
 			// ? vertscoplanar.Add(i);
 			vertflag[i].undermap = (PxU8)vertcountunder++;
 			vertflag[i].overmap  = (PxU8)vertcountover++;
 		}
-		else if(vertflag[i].planetest == UNDER)	{
+		else if(vertflag[i].planetest == UNDER)	
+		{
 			vertflag[i].undermap = (PxU8)vertcountunder++;
 		}
-		else {
+		else 
+		{
 			PX_ASSERT(vertflag[i].planetest == OVER);
 			vertflag[i].overmap  = (PxU8)vertcountover++;
 			vertflag[i].undermap = (PxU8)-1; // for debugging purposes
@@ -762,7 +1864,8 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 	PxI32 underplanescount=0;
 	PxI32 e0=0;
 
-	for(PxI32 currentplane=0; currentplane<convex.facets.count; currentplane++) {
+	for(PxI32 currentplane=0; currentplane<convex.facets.count; currentplane++) 
+	{
 		PxI32 estart =e0;
 		PxI32 enextface=0;
 		PxI32 planeside = 0;
@@ -770,9 +1873,10 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 		PxI32 vout=-1;
 		PxI32 vin =-1;
 		PxI32 coplanaredge = -1;
-		do{
-
-			if(e1 >= convex.edges.count || convex.edges[e1].p!=currentplane) {
+		do
+		{
+			if(e1 >= convex.edges.count || convex.edges[e1].p!=currentplane) 
+			{
 				enextface = e1;
 				e1=estart;
 			}
@@ -787,18 +1891,20 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 			//	ecop=e;
 			//}
 
-
-			if(vertflag[edge0.v].planetest == OVER && vertflag[edge1.v].planetest == OVER){
+			if(vertflag[edge0.v].planetest == OVER && vertflag[edge1.v].planetest == OVER)
+			{
 				// both endpoints over plane
 				edgeflag[e0].undermap  = -1;
 			}
-			else if((vertflag[edge0.v].planetest | vertflag[edge1.v].planetest)  == UNDER) {
+			else if((vertflag[edge0.v].planetest | vertflag[edge1.v].planetest)  == UNDER) 
+			{
 				// at least one endpoint under, the other coplanar or under
 				
 				edgeflag[e0].undermap = (short)under_edge_count;
 				tmpunderedges[under_edge_count].v = (PxU8)vertflag[edge0.v].undermap;
 				tmpunderedges[under_edge_count].p = (PxU8)underplanescount;
-				if(edge0.ea < e0) {
+				if(edge0.ea < e0) 
+				{
 					// connect the neighbors
 					PX_ASSERT(edgeflag[edge0.ea].undermap !=-1);
 					tmpunderedges[under_edge_count].ea = edgeflag[edge0.ea].undermap;
@@ -806,16 +1912,19 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 				}
 				under_edge_count++;
 			}
-			else if((vertflag[edge0.v].planetest | vertflag[edge1.v].planetest)  == COPLANAR) {
+			else if((vertflag[edge0.v].planetest | vertflag[edge1.v].planetest)  == COPLANAR) 
+			{
 				// both endpoints coplanar 
 				// must check a 3rd point to see if UNDER
 				PxI32 e2 = e1+1; 
-				if(e2>=convex.edges.count || convex.edges[e2].p!=currentplane) {
+				if(e2>=convex.edges.count || convex.edges[e2].p!=currentplane) 
+				{
 					e2 = estart;
 				}
 				PX_ASSERT(convex.edges[e2].p==currentplane);
 				HalfEdge &edge2 = convex.edges[e2];
-				if(vertflag[edge2.v].planetest==UNDER) {
+				if(vertflag[edge2.v].planetest==UNDER) 
+				{
 					
 					edgeflag[e0].undermap = (short)under_edge_count;
 					tmpunderedges[under_edge_count].v = (PxU8)vertflag[edge0.v].undermap;
@@ -827,24 +1936,28 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 					vin  = vertflag[edge1.v].undermap;
 					under_edge_count++;
 				}
-				else {
+				else 
+				{
 					edgeflag[e0].undermap = -1;
 				}
 			}
-			else if(vertflag[edge0.v].planetest == UNDER && vertflag[edge1.v].planetest == OVER) {
+			else if(vertflag[edge0.v].planetest == UNDER && vertflag[edge1.v].planetest == OVER) 
+			{
 				// first is under 2nd is over 
 				
 				edgeflag[e0].undermap = (short) under_edge_count;
 				tmpunderedges[under_edge_count].v = (PxU8)vertflag[edge0.v].undermap;
 				tmpunderedges[under_edge_count].p = (PxU8)underplanescount;
-				if(edge0.ea < e0) {
+				if(edge0.ea < e0) 
+				{
 					PX_ASSERT(edgeflag[edge0.ea].undermap !=-1);
 					// connect the neighbors
 					tmpunderedges[under_edge_count].ea = edgeflag[edge0.ea].undermap;
 					tmpunderedges[edgeflag[edge0.ea].undermap].ea = (short)under_edge_count;
 					vout = tmpunderedges[edgeflag[edge0.ea].undermap].v;
 				}
-				else {
+				else 
+				{
 					Plane &p0 = convex.facets[edge0.p];
 					Plane &pa = convex.facets[edgea.p];
 					createdverts.Add(ThreePlaneIntersection(p0,pa,slice));
@@ -861,7 +1974,8 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 				coplanaredge = under_edge_count;
 				under_edge_count++;
 
-				if(vin!=-1) {
+				if(vin!=-1) 
+				{
 					// we previously processed an edge  where we came under
 					// now we know about vout as well
 
@@ -869,7 +1983,8 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 				}
 
 			}
-			else if(vertflag[edge0.v].planetest == COPLANAR && vertflag[edge1.v].planetest == OVER) {
+			else if(vertflag[edge0.v].planetest == COPLANAR && vertflag[edge1.v].planetest == OVER) 
+			{
 				// first is coplanar 2nd is over 
 				
 				edgeflag[e0].undermap = -1;
@@ -877,11 +1992,13 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 				// I hate this but i have to make sure part of this face is UNDER before ouputting this vert
 				PxI32 k=estart;
 				PX_ASSERT(edge0.p == currentplane);
-				while(!(planeside&UNDER) && k<convex.edges.count && convex.edges[k].p==edge0.p) {
+				while(!(planeside&UNDER) && k<convex.edges.count && convex.edges[k].p==edge0.p) 
+				{
 					planeside |= vertflag[convex.edges[k].v].planetest;
 					k++;
 				}
-				if(planeside&UNDER){
+				if(planeside&UNDER)
+				{
 					tmpunderedges[under_edge_count].v = (PxU8)vout;
 					tmpunderedges[under_edge_count].p = (PxU8)underplanescount;
 					tmpunderedges[under_edge_count].ea = -1;
@@ -890,11 +2007,13 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 					
 				}
 			}
-			else if(vertflag[edge0.v].planetest == OVER && vertflag[edge1.v].planetest == UNDER) {
+			else if(vertflag[edge0.v].planetest == OVER && vertflag[edge1.v].planetest == UNDER) 
+			{
 				// first is over next is under 
 				// new vertex!!!
 				if (vin!=-1) return NULL;
-				if(e0<edge0.ea) {
+				if(e0<edge0.ea) 
+				{
 					Plane &p0 = convex.facets[edge0.p];
 					Plane &pa = convex.facets[edgea.p];
 					createdverts.Add(ThreePlaneIntersection(p0,pa,slice));
@@ -902,14 +2021,16 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 					//createdverts.Add(PlaneProject(slice,PlaneLineIntersection(slice,convex.vertices[edge0.v],convex.vertices[edgea.v])));
 					vin = vertcountunder++;
 				}
-				else {
+				else 
+				{
 					// find the new vertex that was created by edge[edge0.ea]
 					PxI32 nea = edgeflag[edge0.ea].undermap;
 					PX_ASSERT(tmpunderedges[nea].p==tmpunderedges[nea+1].p);
 					vin = tmpunderedges[nea+1].v;
 					PX_ASSERT(vin < vertcountunder);
 				}
-				if(vout!=-1) {
+				if(vout!=-1) 
+				{
 					// we previously processed an edge  where we went over
 					// now we know vin too
 					// ADD THIS EDGE TO THE LIST OF EDGES THAT NEED NEIGHBOR ON PARTITION PLANE!!
@@ -918,7 +2039,8 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 				tmpunderedges[under_edge_count].v = (PxU8)vin;
 				tmpunderedges[under_edge_count].p = (PxU8)underplanescount;
 				edgeflag[e0].undermap = (short)under_edge_count;
-				if(e0>edge0.ea) {
+				if(e0>edge0.ea) 
+				{
 					PX_ASSERT(edgeflag[edge0.ea].undermap !=-1);
 					// connect the neighbors
 					tmpunderedges[under_edge_count].ea = edgeflag[edge0.ea].undermap;
@@ -927,20 +2049,23 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 				PX_ASSERT(edgeflag[e0].undermap == under_edge_count);
 				under_edge_count++;
 			}
-			else if(vertflag[edge0.v].planetest == OVER && vertflag[edge1.v].planetest == COPLANAR) {
+			else if(vertflag[edge0.v].planetest == OVER && vertflag[edge1.v].planetest == COPLANAR) 
+			{
 				// first is over next is coplanar 
 				
 				edgeflag[e0].undermap = -1;
 				vin = vertflag[edge1.v].undermap;
 				if (vin==-1) return NULL;
-				if(vout!=-1) {
+				if(vout!=-1) 
+				{
 					// we previously processed an edge  where we came under
 					// now we know both endpoints
 					// ADD THIS EDGE TO THE LIST OF EDGES THAT NEED NEIGHBOR ON PARTITION PLANE!!
 				}
 
 			}
-			else {
+			else 
+			{
 				PX_ALWAYS_ASSERT();
 			}
 			
@@ -950,15 +2075,18 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 
 		} while(e0!=estart) ;
 		e0 = enextface;
-		if(planeside&UNDER) {
+		if(planeside&UNDER) 
+		{
 			planeflag[currentplane].undermap = (PxU8)underplanescount;
 			tmpunderplanes[underplanescount] = convex.facets[currentplane];
 			underplanescount++;
 		}
-		else {
+		else 
+		{
 			planeflag[currentplane].undermap = 0;
 		}
-		if(vout>=0 && (planeside&UNDER)) {
+		if(vout>=0 && (planeside&UNDER)) 
+		{
 			PX_ASSERT(vin>=0);
 			PX_ASSERT(coplanaredge>=0);
 			PX_ASSERT(coplanaredge!=511);
@@ -970,14 +2098,19 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 	}
 
 	// add the new plane to the mix:
-	if(coplanaredges_num>0) {
+	if(coplanaredges_num>0) 
+	{
 		tmpunderplanes[underplanescount++]=slice;
 	}
-	for(i=0;i<coplanaredges_num-1;i++) {
-		if(coplanaredges[i].v1 != coplanaredges[i+1].v0) {
+	for(i=0;i<coplanaredges_num-1;i++) 
+	{
+		if(coplanaredges[i].v1 != coplanaredges[i+1].v0) 
+		{
 			PxI32 j = 0;
-			for(j=i+2;j<coplanaredges_num;j++) {
-				if(coplanaredges[i].v1 == coplanaredges[j].v0) {
+			for(j=i+2;j<coplanaredges_num;j++) 
+			{
+				if(coplanaredges[i].v1 == coplanaredges[j].v0) 
+				{
 					Coplanar tmp = coplanaredges[i+1];
 					coplanaredges[i+1] = coplanaredges[j];
 					coplanaredges[j] = tmp;
@@ -995,18 +2128,22 @@ ConvexH *ConvexHCrop(ConvexH &convex,const Plane &slice)
 
 	ConvexH &under = *punder;
 	PxI32 k=0;
-	for(i=0;i<convex.vertices.count;i++) {
-		if(vertflag[i].planetest != OVER){
+	for(i=0;i<convex.vertices.count;i++) 
+	{
+		if(vertflag[i].planetest != OVER)
+		{
 			under.vertices[k++] = convex.vertices[i];
 		}
 	}
 	i=0;
-	while(k<vertcountunder) {
+	while(k<vertcountunder) 
+	{
 		under.vertices[k++] = createdverts[i++];
 	}
 	PX_ASSERT(i==createdverts.count);
 
-	for(i=0;i<coplanaredges_num;i++) {
+	for(i=0;i<coplanaredges_num;i++) 
+	{
 		under.edges[under_edge_count+i].p  = (PxU8)(underplanescount-1);
 		under.edges[under_edge_count+i].ea = coplanaredges[i].ea;
 		tmpunderedges[coplanaredges[i].ea].ea = (short)(under_edge_count+i);
@@ -1633,7 +2770,7 @@ static PxI32 overhull(Plane *planes,PxI32 planes_count,float3 *verts, PxI32 vert
 			 float3 *&verts_out, PxI32 &verts_count_out,  PxI32 *&faces_out, PxI32 &faces_count_out ,PxF32 inflate)
 {
 	PxI32 i,j;
-	if(verts_count <4) return NULL;
+	if(verts_count <4) return 0;
 	maxplanes = Min(maxplanes,planes_count);
 	float3 bmin(verts[0]),bmax(verts[0]);
 	for(i=0;i<verts_count;i++)
@@ -1689,7 +2826,7 @@ static PxI32 overhull(Plane *planes,PxI32 planes_count,float3 *verts, PxI32 vert
 
 	PX_ASSERT(AssertIntact(*c));
 	//return c;
-	faces_out = (PxI32*)PX_ALLOC(sizeof(PxI32)*(1+c->facets.count+c->edges.count));     // new PxI32[1+c->facets.count+c->edges.count];
+	faces_out = (PxI32*)PX_ALLOC(sizeof(PxI32)*(1+c->facets.count+c->edges.count), PX_DEBUG_EXP("StanHull::overhull"));     // new PxI32[1+c->facets.count+c->edges.count];
 	faces_count_out=0;
 	i=0;
 	faces_out[faces_count_out++]=-1;
@@ -1736,15 +2873,20 @@ static PxI32 overhullv(float3 *verts, PxI32 verts_count,PxI32 maxplanes,
 //*****************************************************
 
 
-bool ComputeHull(PxU32 vcount,const PxF32 *vertices,PHullResult &result,PxU32 vlimit,PxF32 inflate)
+bool ComputeHull(PxU32 vcount,
+				 const PxF32 *vertices,
+				 PHullResult &result,
+				 PxU32 vlimit,
+				 PxF32 inflate,
+				 bool useTriangles)
 {
 
 	PxI32 index_count;
-	PxI32 *faces;
-	float3 *verts_out;
-	PxI32     verts_count_out;
+	PxI32 *faces = 0;
+	float3 *verts_out = 0;
+	PxI32     verts_count_out = 0;
 
-	if(inflate==0.0f)
+	if(inflate==0.0f && useTriangles)
 	{
 		PxI32  *tris_out;
 		PxI32    tris_count;
@@ -1759,30 +2901,69 @@ bool ComputeHull(PxU32 vcount,const PxF32 *vertices,PHullResult &result,PxU32 vl
 	}
 
 	PxI32 ret = overhullv((float3*)vertices,vcount,35,verts_out,verts_count_out,faces,index_count,inflate,120.0f,vlimit);
-	if(!ret) {
+
+	if(!ret) 
+	{
 		tris.SetSize(0); //have to set the size to 0 in order to protect from a "pure virtual function call" problem
 		return false;
 	}
 
-	StanArray<int3> tris;
-	PxI32 n=faces[0];
-	PxI32 k=1;
-	for(PxI32 i=0;i<n;i++)
+	if ( useTriangles )
 	{
-		PxI32 pn = faces[k++];
-		for(PxI32 j=2;j<pn;j++) tris.Add(int3(faces[k],faces[k+j-1],faces[k+j]));
-		k+=pn;
-	}
-	PX_ASSERT(tris.count == index_count-1-(n*3));
-	PX_FREE(faces);	// PT: I added that. Is it ok ?
+		StanArray<int3> tris;
+		PxI32 n=faces[0];
+		PxI32 k=1;
+		for(PxI32 i=0;i<n;i++)
+		{
+			PxI32 pn = faces[k++];
+			for(PxI32 j=2;j<pn;j++) tris.Add(int3(faces[k],faces[k+j-1],faces[k+j]));
+			k+=pn;
+		}
+		PX_ASSERT(tris.count == index_count-1-(n*3));
+		PX_FREE(faces);	// PT: I added that. Is it ok ?
 
-	result.mIndexCount = (PxU32) (tris.count*3);
-	result.mFaceCount  = (PxU32) tris.count;
-	result.mVertices   = (PxF32*) verts_out;
-	result.mVcount     = (PxU32) verts_count_out;
-	result.mIndices    = (PxU32 *) tris.element;
-	tris.element=NULL; tris.count = tris.array_size=0;
-	stanhull::tris.SetSize(0); //have to set the size to 0 in order to protect from a "pure virtual function call" problem
+		result.mIndexCount = (PxU32) (tris.count*3);
+		result.mFaceCount  = (PxU32) tris.count;
+		result.mVertices   = (PxF32*) verts_out;
+		result.mVcount     = (PxU32) verts_count_out;
+		result.mIndices    = (PxU32 *) tris.element;
+		tris.element=NULL; tris.count = tris.array_size=0;
+		physx::stanhull::tris.SetSize(0); //have to set the size to 0 in order to protect from a "pure virtual function call" problem
+	}
+	else
+	{
+		StanArray<PxU32> indices;
+		StanArray<PxU8>	 faceCounts;
+
+		PxI32 n=faces[0];
+		PxI32 k=1;
+		for(PxI32 i=0;i<n;i++)
+		{
+			PxI32 pn = faces[k++];
+			PX_ASSERT( pn >= 3 && pn < 256 );
+			faceCounts.Add( (PxU8)pn );
+			for(PxI32 j=0;j<pn;j++) 
+			{
+				indices.Add(faces[k]);
+				k++;
+			}
+		}
+		result.mIndexCount = indices.count;
+		result.mFaceCount = faceCounts.count;
+		result.mVertices   = (PxF32*) verts_out;
+		result.mVcount     = (PxU32) verts_count_out;
+		result.mIndices    = (PxU32 *) indices.element;
+		result.mFaces		= (PxU8 *)faceCounts.element;
+
+		// Null these out since we are keeping the memory associated with these containers
+		indices.element = NULL;
+		indices.count = indices.array_size = 0;
+		faceCounts.element = NULL;
+		faceCounts.count = faceCounts.array_size = 0;
+
+		physx::stanhull::tris.SetSize(0); //have to set the size to 0 in order to protect from a "pure virtual function call" problem
+
+	}
 
 	return true;
 }
@@ -1791,7 +2972,7 @@ bool ComputeHull(PxU32 vcount,const PxF32 *vertices,PHullResult &result,PxU32 vl
 void ReleaseHull(PHullResult &result)
 {
   PX_FREE(result.mIndices);	// PT: I added that. Is it ok ?
-//??  PX_FREE(result.mVertices);	// PT: I added that. Is it ok ?
+  PX_FREE(result.mVertices);	// PT: I added that. Is it ok ?
 	result.mVcount = 0;
 	result.mIndexCount = 0;
 	result.mIndices = 0;
@@ -1802,9 +2983,453 @@ void ReleaseHull(PHullResult &result)
 
 
 //****** HULLLIB source code
-static void bringOutYourDead(const PxF32 *verts,PxU32 vcount, PxF32 *overts,PxU32 &ocount,PxU32 *indices,PxU32 indexcount)
+
+
+HullError HullLibrary::CreateConvexHull(const HullDesc &desc, // describes the input request
+										HullResult &result)   // contains the resulst
 {
-	PxU32 *used = (PxU32 *)PX_ALLOC(sizeof(PxU32)*vcount);
+	HullError ret = QE_FAIL;
+
+
+	PHullResult hr;
+
+	PxU32 vcount = desc.mVcount;
+	if ( vcount < 8 ) 
+	{
+		vcount = 8;
+	}
+
+	PxF32 *vsource  = (PxF32 *) PX_ALLOC( sizeof(PxF32)*vcount*3, PX_DEBUG_EXP("HullLibrary::CreateConvexHull") );
+
+
+	PxF32 scale[3];
+
+	PxU32 ovcount;
+
+	bool ok = CleanupVertices(desc.mVcount,desc.mVertices, desc.mVertexStride, ovcount, vsource, desc.mNormalEpsilon, scale ); // normalize point cloud, remove duplicates!
+
+	if ( ok )
+	{
+		{
+			for (PxU32 i=0; i<ovcount; i++)
+			{
+				PxF32 *v = &vsource[i*3];
+				v[0]*=scale[0];
+				v[1]*=scale[1];
+				v[2]*=scale[2];
+			}
+		}
+
+		PxF32 skinwidth = 0;
+		if ( desc.HasHullFlag(QF_SKIN_WIDTH) )
+		{
+			skinwidth = desc.mSkinWidth;
+		}
+
+		ok = ComputeHull(ovcount,vsource,hr,desc.mMaxVertices,skinwidth,desc.HasHullFlag(QF_TRIANGLES));
+
+		if ( ok )
+		{
+
+			// re-index triangle mesh so it refers to only used vertices, rebuild a new vertex table.
+			PxF32 *vscratch = (PxF32 *) PX_ALLOC( sizeof(PxF32)*hr.mVcount*3, PX_DEBUG_EXP("HullLibrary::CreateConvexHull"));
+			BringOutYourDead(hr.mVertices,hr.mVcount, vscratch, ovcount, hr.mIndices, hr.mIndexCount );
+
+			ret = QE_OK;
+
+			if ( desc.HasHullFlag(QF_TRIANGLES) ) // if he wants the results as triangle!
+			{
+				result.mPolygons          = false;
+				result.mNumOutputVertices = ovcount;
+				result.mOutputVertices    = (PxF32 *)PX_ALLOC( sizeof(PxF32)*ovcount*3, PX_DEBUG_EXP("HullLibrary::CreateConvexHull"));
+				result.mNumFaces          = hr.mFaceCount;
+				result.mNumIndices        = hr.mIndexCount;
+
+				result.mIndices           = (PxU32 *) PX_ALLOC( sizeof(PxU32)*hr.mIndexCount, PX_DEBUG_EXP("HullLibrary::CreateConvexHull"));
+
+				memcpy(result.mOutputVertices, vscratch, sizeof(PxF32)*3*ovcount );
+
+				if ( desc.HasHullFlag(QF_REVERSE_ORDER) )
+				{
+					const PxU32 *source = hr.mIndices;
+					PxU32 *dest   = result.mIndices;
+					for (PxU32 i=0; i<hr.mFaceCount; i++)
+					{
+						dest[0] = source[2];
+						dest[1] = source[1];
+						dest[2] = source[0];
+						dest+=3;
+						source+=3;
+					}
+				}
+				else
+				{
+					memcpy(result.mIndices, hr.mIndices, sizeof(PxU32)*hr.mIndexCount);
+				}
+			}
+			else
+			{
+				result.mPolygons          = true;
+				result.mNumOutputVertices = ovcount;
+				result.mOutputVertices    = (PxF32 *)PX_ALLOC( sizeof(PxF32)*ovcount*3, PX_DEBUG_EXP("HullLibrary::CreateConvexHull"));
+				result.mNumFaces          = hr.mFaceCount;
+				result.mNumIndices        = hr.mIndexCount;
+				result.mIndices           = (PxU32 *) PX_ALLOC( sizeof(PxU32)*result.mNumIndices, PX_DEBUG_EXP("HullLibrary::CreateConvexHull"));
+				result.mFaces			  = (PxU8 *)PX_ALLOC(sizeof(PxU8)*hr.mFaceCount,PX_DEBUG_EXP("HullLibrary::Faces"));
+
+				memcpy(result.mOutputVertices, vscratch, sizeof(PxF32)*3*ovcount ); // copy the vertices
+				memcpy(result.mFaces, hr.mFaces, sizeof(PxU8)*hr.mFaceCount); // copy the face counters
+
+				if ( desc.HasHullFlag(QF_REVERSE_ORDER) )
+				{
+					const PxU32 *source = hr.mIndices;
+					PxU32 *dest = result.mIndices;
+					for (PxU32 i=0; i<hr.mFaceCount; i++)
+					{
+						PxU32 pcount = result.mFaces[i];
+						for (PxU32 j=0; j<pcount; j++)
+						{
+							dest[j] = source[(pcount-1)-j];
+						}
+						dest+=pcount;
+						source+=pcount;
+					}
+				}
+				else
+				{
+					memcpy(result.mIndices, hr.mIndices, sizeof(PxU32)*hr.mIndexCount); // copy the indices
+				}
+			}
+
+			// ReleaseHull frees memory for hr.mVertices, which can be the
+			// same pointer as vsource, so be sure to set it to NULL if necessary
+
+			if ( hr.mVertices == vsource) vsource = NULL;
+
+			ReleaseHull(hr);
+
+			if ( vscratch )
+			{
+				PX_FREE(vscratch);
+			}
+		}
+	}
+
+	// this pointer is usually freed in ReleaseHull()
+	if ( vsource )
+	{
+		PX_FREE(vsource);
+	}
+
+
+	return ret;
+}
+
+
+
+HullError HullLibrary::ReleaseResult(HullResult &result) // release memory allocated for this result, we are done with it.
+{
+	if ( result.mOutputVertices )
+	{
+		PX_FREE(result.mOutputVertices);
+		result.mOutputVertices = 0;
+	}
+	if ( result.mIndices )
+	{
+		PX_FREE(result.mIndices);
+		result.mIndices = 0;
+	}
+	if( result.mFaces )
+	{
+		PX_FREE(result.mFaces);
+		result.mFaces = NULL;
+	}
+	return QE_OK;
+}
+
+
+static void AddPoint(PxU32 &vcount,PxF32 *p,PxF32 x,PxF32 y,PxF32 z)
+{
+	PxF32 *dest = &p[vcount*3];
+	dest[0] = x;
+	dest[1] = y;
+	dest[2] = z;
+	vcount++;
+}
+
+
+PxF32 GetDist(PxF32 px,PxF32 py,PxF32 pz,const PxF32 *p2)
+{
+
+	PxF32 dx = px - p2[0];
+	PxF32 dy = py - p2[1];
+	PxF32 dz = pz - p2[2];
+
+	return dx*dx+dy*dy+dz*dz;
+}
+
+
+
+bool  HullLibrary::CleanupVertices(PxU32 svcount,
+																const PxF32 *svertices,
+																PxU32 stride,
+																PxU32 &vcount,       // output number of vertices
+																PxF32 *vertices,                 // location to store the results.
+																PxF32  normalepsilon,
+																PxF32 *scale)
+{
+	if ( svcount == 0 ) return false;
+
+
+	#define EPSILON 0.000001f // close enough to consider two floating point numbers to be 'the same'.
+
+	vcount = 0;
+
+	PxF32 recip[3];
+
+	if ( scale )
+	{
+		scale[0] = 1;
+		scale[1] = 1;
+		scale[2] = 1;
+	}
+	else
+	{
+		// Make compiler happy
+		recip[0] = recip[1] = recip[2] = 0;
+	}
+
+	PxF32 bmin[3] = {  FLT_MAX,  FLT_MAX,  FLT_MAX };
+	PxF32 bmax[3] = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+
+	const char *vtx = (const char *) svertices;
+
+	{
+		for (PxU32 i=0; i<svcount; i++)
+		{
+			const PxF32 *p = (const PxF32 *) vtx;
+
+			vtx+=stride;
+
+			for (PxI32 j=0; j<3; j++)
+			{
+				if ( p[j] < bmin[j] ) bmin[j] = p[j];
+				if ( p[j] > bmax[j] ) bmax[j] = p[j];
+			}
+		}
+	}
+
+	PxF32 dx = bmax[0] - bmin[0];
+	PxF32 dy = bmax[1] - bmin[1];
+	PxF32 dz = bmax[2] - bmin[2];
+
+	PxF32 center[3];
+
+	center[0] = dx*0.5f + bmin[0];
+	center[1] = dy*0.5f + bmin[1];
+	center[2] = dz*0.5f + bmin[2];
+
+	if ( dx < EPSILON || dy < EPSILON || dz < EPSILON || svcount < 3 )
+	{
+
+		PxF32 len = FLT_MAX;
+
+		if ( dx > EPSILON && dx < len ) len = dx;
+		if ( dy > EPSILON && dy < len ) len = dy;
+		if ( dz > EPSILON && dz < len ) len = dz;
+
+		if ( len == FLT_MAX )
+		{
+			dx = dy = dz = 0.01f; // one centimeter
+		}
+		else
+		{
+			if ( dx < EPSILON ) dx = len * 0.05f; // 1/5th the shortest non-zero edge.
+			if ( dy < EPSILON ) dy = len * 0.05f;
+			if ( dz < EPSILON ) dz = len * 0.05f;
+		}
+
+		PxF32 x1 = center[0] - dx;
+		PxF32 x2 = center[0] + dx;
+
+		PxF32 y1 = center[1] - dy;
+		PxF32 y2 = center[1] + dy;
+
+		PxF32 z1 = center[2] - dz;
+		PxF32 z2 = center[2] + dz;
+
+		AddPoint(vcount,vertices,x1,y1,z1);
+		AddPoint(vcount,vertices,x2,y1,z1);
+		AddPoint(vcount,vertices,x2,y2,z1);
+		AddPoint(vcount,vertices,x1,y2,z1);
+		AddPoint(vcount,vertices,x1,y1,z2);
+		AddPoint(vcount,vertices,x2,y1,z2);
+		AddPoint(vcount,vertices,x2,y2,z2);
+		AddPoint(vcount,vertices,x1,y2,z2);
+
+		return true; // return cube
+
+
+	}
+	else
+	{
+		if ( scale )
+		{
+			scale[0] = dx;
+			scale[1] = dy;
+			scale[2] = dz;
+
+			recip[0] = 1 / dx;
+			recip[1] = 1 / dy;
+			recip[2] = 1 / dz;
+
+			center[0]*=recip[0];
+			center[1]*=recip[1];
+			center[2]*=recip[2];
+
+		}
+
+	}
+
+
+
+	vtx = (const char *) svertices;
+
+	for (PxU32 i=0; i<svcount; i++)
+	{
+
+		const PxF32 *p = (const PxF32 *)vtx;
+		vtx+=stride;
+
+		PxF32 px = p[0];
+		PxF32 py = p[1];
+		PxF32 pz = p[2];
+
+		if ( scale )
+		{
+			px = px*recip[0]; // normalize
+			py = py*recip[1]; // normalize
+			pz = pz*recip[2]; // normalize
+		}
+
+		{
+			PxU32 j;
+
+			for (j=0; j<vcount; j++)
+			{
+				PxF32 *v = &vertices[j*3];
+
+				PxF32 x = v[0];
+				PxF32 y = v[1];
+				PxF32 z = v[2];
+
+				PxF32 dx = fabsf(x - px );
+				PxF32 dy = fabsf(y - py );
+				PxF32 dz = fabsf(z - pz );
+
+				if ( dx < normalepsilon && dy < normalepsilon && dz < normalepsilon )
+				{
+					// ok, it is close enough to the old one
+					// now let us see if it is further from the center of the point cloud than the one we already recorded.
+					// in which case we keep this one instead.
+
+					PxF32 dist1 = GetDist(px,py,pz,center);
+					PxF32 dist2 = GetDist(v[0],v[1],v[2],center);
+
+					if ( dist1 > dist2 )
+					{
+						v[0] = px;
+						v[1] = py;
+						v[2] = pz;
+					}
+
+					break;
+				}
+			}
+
+			if ( j == vcount )
+			{
+				PxF32 *dest = &vertices[vcount*3];
+				dest[0] = px;
+				dest[1] = py;
+				dest[2] = pz;
+				vcount++;
+			}
+		}
+	}
+
+	// ok..now make sure we didn't prune so many vertices it is now invalid.
+	{
+		PxF32 bmin[3] = {  FLT_MAX,  FLT_MAX,  FLT_MAX };
+		PxF32 bmax[3] = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+
+		for (PxU32 i=0; i<vcount; i++)
+		{
+			const PxF32 *p = &vertices[i*3];
+			for (PxI32 j=0; j<3; j++)
+			{
+				if ( p[j] < bmin[j] ) bmin[j] = p[j];
+				if ( p[j] > bmax[j] ) bmax[j] = p[j];
+			}
+		}
+
+		PxF32 dx = bmax[0] - bmin[0];
+		PxF32 dy = bmax[1] - bmin[1];
+		PxF32 dz = bmax[2] - bmin[2];
+
+		if ( dx < EPSILON || dy < EPSILON || dz < EPSILON || vcount < 3)
+		{
+			PxF32 cx = dx*0.5f + bmin[0];
+			PxF32 cy = dy*0.5f + bmin[1];
+			PxF32 cz = dz*0.5f + bmin[2];
+
+			PxF32 len = FLT_MAX;
+
+			if ( dx >= EPSILON && dx < len ) len = dx;
+			if ( dy >= EPSILON && dy < len ) len = dy;
+			if ( dz >= EPSILON && dz < len ) len = dz;
+
+			if ( len == FLT_MAX )
+			{
+				dx = dy = dz = 0.01f; // one centimeter
+			}
+			else
+			{
+				if ( dx < EPSILON ) dx = len * 0.05f; // 1/5th the shortest non-zero edge.
+				if ( dy < EPSILON ) dy = len * 0.05f;
+				if ( dz < EPSILON ) dz = len * 0.05f;
+			}
+
+			PxF32 x1 = cx - dx;
+			PxF32 x2 = cx + dx;
+
+			PxF32 y1 = cy - dy;
+			PxF32 y2 = cy + dy;
+
+			PxF32 z1 = cz - dz;
+			PxF32 z2 = cz + dz;
+
+			vcount = 0; // add box
+
+			AddPoint(vcount,vertices,x1,y1,z1);
+			AddPoint(vcount,vertices,x2,y1,z1);
+			AddPoint(vcount,vertices,x2,y2,z1);
+			AddPoint(vcount,vertices,x1,y2,z1);
+			AddPoint(vcount,vertices,x1,y1,z2);
+			AddPoint(vcount,vertices,x2,y1,z2);
+			AddPoint(vcount,vertices,x2,y2,z2);
+			AddPoint(vcount,vertices,x1,y2,z2);
+
+			return true;
+		}
+	}
+
+	return true;
+}
+
+void HullLibrary::BringOutYourDead(const PxF32 *verts,PxU32 vcount, PxF32 *overts,PxU32 &ocount,PxU32 *indices,PxU32 indexcount)
+{
+	PxU32 *used = (PxU32 *)PX_ALLOC(sizeof(PxU32)*vcount, PX_DEBUG_EXP("HullLibrary::BringOutYourDead"));
 	memset(used,0,sizeof(PxU32)*vcount);
 
 	ocount = 0;
@@ -1839,49 +3464,171 @@ static void bringOutYourDead(const PxF32 *verts,PxU32 vcount, PxF32 *overts,PxU3
 	PX_FREE(used);
 }
 
-
-
-bool createConvexHull(PxU32 vcount,const PxF32 *vertices,HullResult &result,PxU32 maxHullVertices,PxF32 hullSkinWidth)
+//==================================================================================
+HullError HullLibrary::CreateTriangleMesh(HullResult &answer,ConvexHullTriangleInterface *iface)
 {
-	PHullResult hr;
-	bool ret = ComputeHull(vcount,vertices,hr,maxHullVertices,hullSkinWidth);
-	if ( ret )
-	{
-		// re-index triangle mesh so it refers to only used vertices, rebuild a new vertex table.
-		PxF32 *vscratch = (PxF32 *) PX_ALLOC( sizeof(PxF32)*hr.mVcount*3);
-		PxU32 ovcount;
-		bringOutYourDead(hr.mVertices,hr.mVcount, vscratch, ovcount, hr.mIndices, hr.mIndexCount );
-		result.mNumOutputVertices = ovcount;
-		result.mOutputVertices    = (PxF32 *)PX_ALLOC( sizeof(PxF32)*ovcount*3);
-		result.mNumFaces          = hr.mFaceCount;
-		result.mNumIndices        = hr.mIndexCount;
-		result.mIndices           = (PxU32 *) PX_ALLOC( sizeof(PxU32)*hr.mIndexCount);
-		memcpy(result.mOutputVertices, vscratch, sizeof(PxF32)*3*ovcount );
-		memcpy(result.mIndices, hr.mIndices, sizeof(PxU32)*hr.mIndexCount);
-		ReleaseHull(hr);
-		PX_FREE(vscratch);
-	}
+	HullError ret = QE_FAIL;
 
+
+	const PxF32 *p            = answer.mOutputVertices;
+	const PxU32   *idx = answer.mIndices;
+	PxU32 fcount       = answer.mNumFaces;
+
+	if ( p && idx && fcount )
+	{
+		ret = QE_OK;
+
+		for (PxU32 i=0; i<fcount; i++)
+		{
+			PxU32 pcount = *idx++;
+
+			PxU32 i1 = *idx++;
+			PxU32 i2 = *idx++;
+			PxU32 i3 = *idx++;
+
+			const PxF32 *p1 = &p[i1*3];
+			const PxF32 *p2 = &p[i2*3];
+			const PxF32 *p3 = &p[i3*3];
+
+			AddConvexTriangle(iface,p1,p2,p3);
+
+			pcount-=3;
+			while ( pcount )
+			{
+				i3 = *idx++;
+				p2 = p3;
+				p3 = &p[i3*3];
+
+				AddConvexTriangle(iface,p1,p2,p3);
+				pcount--;
+			}
+
+		}
+	}
 
 	return ret;
 }
 
-
-
-void releaseHullResult(HullResult &result) // release memory allocated for this result, we are done with it.
+//==================================================================================
+void HullLibrary::AddConvexTriangle(ConvexHullTriangleInterface *callback,const PxF32 *p1,const PxF32 *p2,const PxF32 *p3)
 {
-	if ( result.mOutputVertices )
+	ConvexHullVertex v1,v2,v3;
+
+	#define TSCALE1 (1.0f/4.0f)
+
+	v1.mPos[0] = p1[0];
+	v1.mPos[1] = p1[1];
+	v1.mPos[2] = p1[2];
+
+	v2.mPos[0] = p2[0];
+	v2.mPos[1] = p2[1];
+	v2.mPos[2] = p2[2];
+
+	v3.mPos[0] = p3[0];
+	v3.mPos[1] = p3[1];
+	v3.mPos[2] = p3[2];
+
+	PxF32 n[3];
+	ComputeNormal(n,p1,p2,p3);
+
+	v1.mNormal[0] = n[0];
+	v1.mNormal[1] = n[1];
+	v1.mNormal[2] = n[2];
+
+	v2.mNormal[0] = n[0];
+	v2.mNormal[1] = n[1];
+	v2.mNormal[2] = n[2];
+
+	v3.mNormal[0] = n[0];
+	v3.mNormal[1] = n[1];
+	v3.mNormal[2] = n[2];
+
+	const PxF32 *tp1 = p1;
+	const PxF32 *tp2 = p2;
+	const PxF32 *tp3 = p3;
+
+	PxI32 i1 = 0;
+	PxI32 i2 = 0;
+
+	PxF32 nx = fabsf(n[0]);
+	PxF32 ny = fabsf(n[1]);
+	PxF32 nz = fabsf(n[2]);
+
+	if ( nx <= ny && nx <= nz )
+		i1 = 0;
+	if ( ny <= nx && ny <= nz )
+		i1 = 1;
+	if ( nz <= nx && nz <= ny )
+		i1 = 2;
+
+	switch ( i1 )
 	{
-		PX_FREE(result.mOutputVertices);
-		result.mOutputVertices = 0;
+		case 0:
+			if ( ny < nz )
+				i2 = 1;
+			else
+				i2 = 2;
+			break;
+		case 1:
+			if ( nx < nz )
+				i2 = 0;
+			else
+				i2 = 2;
+			break;
+		case 2:
+			if ( nx < ny )
+				i2 = 0;
+			else
+				i2 = 1;
+			break;
 	}
-	if ( result.mIndices )
-	{
-		PX_FREE(result.mIndices);
-		result.mIndices = 0;
-	}
+
+	v1.mTexel[0] = tp1[i1]*TSCALE1;
+	v1.mTexel[1] = tp1[i2]*TSCALE1;
+
+	v2.mTexel[0] = tp2[i1]*TSCALE1;
+	v2.mTexel[1] = tp2[i2]*TSCALE1;
+
+	v3.mTexel[0] = tp3[i1]*TSCALE1;
+	v3.mTexel[1] = tp3[i2]*TSCALE1;
+
+	callback->ConvexHullTriangle(v3,v2,v1);
 }
 
+//==================================================================================
+PxF32 HullLibrary::ComputeNormal(PxF32 *n,const PxF32 *A,const PxF32 *B,const PxF32 *C)
+{
+	PxF32 vx,vy,vz,wx,wy,wz,vw_x,vw_y,vw_z,mag;
 
+	vx = (B[0] - C[0]);
+	vy = (B[1] - C[1]);
+	vz = (B[2] - C[2]);
+
+	wx = (A[0] - B[0]);
+	wy = (A[1] - B[1]);
+	wz = (A[2] - B[2]);
+
+	vw_x = vy * wz - vz * wy;
+	vw_y = vz * wx - vx * wz;
+	vw_z = vx * wy - vy * wx;
+
+	mag = sqrtf((vw_x * vw_x) + (vw_y * vw_y) + (vw_z * vw_z));
+
+	if ( mag < 0.000001f )
+	{
+		mag = 0;
+	}
+	else
+	{
+		mag = 1.0f/mag;
+	}
+
+	n[0] = vw_x * mag;
+	n[1] = vw_y * mag;
+	n[2] = vw_z * mag;
+
+	return mag;
+}
 
 }; // End of namespace
+};
