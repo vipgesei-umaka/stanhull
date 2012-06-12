@@ -36,6 +36,8 @@
 
 #include "StanHull.h"
 
+using namespace physx;
+
 namespace physx
 {
 	namespace stanhull
