@@ -29,50 +29,147 @@
 		THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -----------------------------------------------------------------------*/
 
-typedef unsigned int PxU32;
-typedef int PxI32;
-typedef float PxF32;
-typedef unsigned char PxU8;
+#include "StanHullConfig.h"
 
-class UserAllocated
+namespace physx
 {
-public:
-};
-
-#define PX_NEW new
-#define PX_ASSERT assert
-#define PX_ALWAYS_ASSERT() assert(0)
-#define PX_FORCE_PARAMETER_REFERENCE(_P) (void)(_P);
-#define PX_ALLOC(x) ::malloc(x)
-#define PX_FREE(x) ::free(x)
-
-namespace stanhull
-{
+	namespace stanhull
+	{
 
 class HullResult
 {
 public:
 	HullResult(void)
 	{
-		mNumOutputVertices = 0;
-		mOutputVertices = 0;
-		mNumFaces = 0;
-		mNumIndices = 0;
-		mIndices = 0;
+		mPolygons			= true;
+		mNumOutputVertices	= 0;
+		mOutputVertices		= NULL;
+		mNumFaces			= 0;
+		mNumIndices			= 0;
+		mIndices			= NULL;
+		mFaces				= NULL;
 	}
-	PxU32            mNumOutputVertices;         // number of vertices in the output hull
-	PxF32			*mOutputVertices;            // array of vertices, 3 floats each x,y,z
-	PxU32            mNumFaces;                  // the number of faces produced
-	PxU32            mNumIndices;                // the total number of indices
-	PxU32           *mIndices;                   // pointer to indices.
-
-// If triangles, then indices are array indexes into the vertex list.
-// If polygons, indices are in the form (number of points in face) (p1, p2, p3, ..) etc..
+	bool			mPolygons;			// true if indices represents polygons, false indices are triangles
+	PxU32			mNumOutputVertices;	// number of vertices in the output hull
+	PxF32			*mOutputVertices;	// array of vertices, 3 floats each x,y,z
+	PxU32			mNumFaces;			// the number of faces produced
+	PxU32			mNumIndices;		// the total number of indices
+	PxU32			*mIndices;			// pointer to indices.
+	PxU8			*mFaces;			// Number of points in each polygon face
 };
 
-bool createConvexHull(PxU32 vcount,const PxF32 *vertices,HullResult &result,PxU32 maxHullVertices=256,PxF32 hullSkinWidth=0);
-void releaseHullResult(HullResult &result); // release memory allocated for this result, we are done with it.
+enum HullFlag
+{
+	QF_TRIANGLES         = (1<<0),             // report results as triangles, not polygons.
+	QF_REVERSE_ORDER     = (1<<1),             // reverse order of the triangle indices.
+	QF_SKIN_WIDTH        = (1<<2),             // extrude hull based on this skin width
+	QF_DEFAULT           = 0
+};
+
+
+class HullDesc
+{
+public:
+	HullDesc(void)
+	{
+		mFlags          = QF_DEFAULT;
+		mVcount         = 0;
+		mVertices       = 0;
+		mVertexStride   = 0;
+		mNormalEpsilon  = 0.001f;
+		mMaxVertices = 4096; // maximum number of points to be considered for a convex hull.
+		mSkinWidth = 0.01f; // default is one centimeter
+	};
+
+	HullDesc(PxU32 flags,
+			 PxU32 vcount,
+			 const PxF32 *vertices,
+			 PxU32 stride)
+	{
+		mFlags          = flags;
+		mVcount         = vcount;
+		mVertices       = vertices;
+		mVertexStride   = stride;
+		mNormalEpsilon  = 0.001f;
+		mMaxVertices    = 4096;
+		mSkinWidth = 0.01f; // default is one centimeter
+	}
+
+	bool HasHullFlag(PxU32 flags) const
+	{
+		if ( mFlags & flags ) return true;
+		return false;
+	}
+
+	void SetHullFlag(PxU32 flags)
+	{
+		mFlags|=flags;
+	}
+
+	void ClearHullFlag(PxU32 flags)
+	{
+		mFlags&=~flags;
+	}
+
+	PxU32      mFlags;           // flags to use when generating the convex hull.
+	PxU32      mVcount;          // number of vertices in the input point cloud
+	const PxF32      *mVertices;        // the array of vertices.
+	PxU32      mVertexStride;    // the stride of each vertex, in bytes.
+	PxF32             mNormalEpsilon;   // the epsilon for removing duplicates.  This is a normalized value, if normalized bit is on.
+	PxF32             mSkinWidth;
+	PxU32      mMaxVertices;               // maximum number of vertices to be considered for the hull!
+};
+
+enum HullError
+{
+	QE_OK,            // success!
+	QE_FAIL,           // failed.
+	QE_NOT_READY,
+};
+
+// This class is used when converting a convex hull into a triangle mesh.
+class ConvexHullVertex
+{
+public:
+	PxF32         mPos[3];
+	PxF32         mNormal[3];
+	PxF32         mTexel[2];
+};
+
+// A virtual interface to receive the triangles from the convex hull.
+class ConvexHullTriangleInterface
+{
+public:
+	virtual void ConvexHullTriangle(const ConvexHullVertex &v1,const ConvexHullVertex &v2,const ConvexHullVertex &v3) = 0;
+};
+
+
+class HullLibrary
+{
+public:
+
+	HullError CreateConvexHull(const HullDesc       &desc,           // describes the input request
+															HullResult           &result);        // contains the resulst
+
+	HullError ReleaseResult(HullResult &result); // release memory allocated for this result, we are done with it.
+
+	HullError CreateTriangleMesh(HullResult &answer,ConvexHullTriangleInterface *iface);
+private:
+	PxF32 ComputeNormal(PxF32 *n,const PxF32 *A,const PxF32 *B,const PxF32 *C);
+	void AddConvexTriangle(ConvexHullTriangleInterface *callback,const PxF32 *p1,const PxF32 *p2,const PxF32 *p3);
+
+	void BringOutYourDead(const PxF32 *verts,PxU32 vcount, PxF32 *overts,PxU32 &ocount,PxU32 *indices,PxU32 indexcount);
+
+	bool    CleanupVertices(PxU32 svcount,
+													const PxF32 *svertices,
+													PxU32 stride,
+													PxU32 &vcount,       // output number of vertices
+													PxF32 *vertices,                 // location to store the results.
+													PxF32  normalepsilon,
+													PxF32 *scale);
+};
 
 }; // end of namespace
+};
 
 #endif
